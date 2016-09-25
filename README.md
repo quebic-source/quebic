@@ -1,7 +1,7 @@
 # quebic
 reactive java web-framework
 
-quebic contains non-blocking web server. You can develop micro services by using quebic and you can communicate with each services easily. quebic have inbuilt Clustering and Load-Balancing mechanism.
+quebic contains non-blocking web server. You can develop micro services by using quebic and you can communicate with each services easily. quebic have inbuilt Clustering and Load-Balancing mechanism. [more](http://quebic.io/)
 
 ### Prerequisities
   * JDK 1.8.X
