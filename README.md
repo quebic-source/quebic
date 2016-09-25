@@ -70,39 +70,31 @@ public class App
 public class UserController {
 
 	@Autowired
-	private ServiceCaller serviceCaller;
+	private UserService userService;
 	
-	@ResponseBody
-	@RequestMapping(produce="application/json")
-	public void findAll(HttpResponseResult responseResult) throws ServiceCallerException{
-		
-		Result<List<User>> result = Result.create();
-		FailResult failResult = FailResult.create();
-		
-		serviceCaller.call("UserService.findAll", result);
-		
-		result.process(r->{
-			responseResult.complete(new ResponseMessage(1, r));
-		}, failResult);
-		
-		failResult.setHandler(fail->{
-			responseResult.complete(new ResponseMessage(-1, fail.getMessage()),500);
-		});
+	@RequestMapping
+	public void findAll(ApplicationContextData contextData, Response response) throws JsonParserException{
+		response.writePOJO(userService.findAll(contextData));
 	}
 	
-	@ResponseBody
-	@RequestMapping(method=HttpMethod.POST, produce="application/json")
-	public void insert(@ModelAttribute User user, HttpResponseResult responseResult) throws ServiceCallerException{
-		
-		serviceCaller.call("UserService.insert", user);
-		responseResult.complete(new ResponseMessage(1, "do insert"),200);
-	
+	@RequestMapping(value="/{id}")
+	public void findById(@PathVariable("id") Integer id, ApplicationContextData contextData, Response response) throws JsonParserException{
+		User user = userService.findById(contextData, id);
+		response.writePOJO(user);
 	}
+	
+	@RequestMapping(method=HttpMethod.POST)
+	public void save(@ModelAttribute User user, ApplicationContextData contextData, Response response) throws JsonParserException{
+		userService.save(contextData, user);
+		response.setResponseCode(201);
+		response.writePOJO(user);
+	}
+	
 	....
 }
 ```
 ####@Controller
-* Use ```com.lovi.puppy.annotation.Controller```
+* Use ```com.lovi.quebic.annotation.Controller```
 * Implementation of the controllers are similar to the spring-mvc but remember internal architecture of the puppy-io is totally different from spring-mvc
 
 ####@RequestMapping
@@ -111,13 +103,9 @@ public class UserController {
 * consumes = The consumable media types of the mapped request
 * produce = The producible media types of the mapped request
 
-####HttpResponseResult
-* ```HttpResponseResult.complete(Object value)``` set response value
-* ```HttpResponseResult.complete(Object value, int statusCode)``` set response value with statusCode
-* If you put ```@ResponseBody``` annonation with the method, then return the value of object as response. otherwise response is redirect to  a template or another route.
-* ```HttpResponseResult.complete("{template}")```
-* ```HttpResponseResult.complete("/{route}")```
-* puppy-io use Thymeleaf template engine for genarating templates
+####Response
+* ```Response.write(byte[] value)``` set response value
+* ```Response.writPOJO(Object value)``` write java POJO as response.
 
 ####ServiceCaller
 * ServiceCaller is used to call service method
