@@ -47,17 +47,21 @@ quebic contains non-blocking web server. You can develop micro services by using
 @SpringBootApplication
 public class App 
 {
+	private final static Logger logger = LoggerFactory.getLogger(App.class);
+    
     public static void main( String[] args )
     {
-        PuppyApp.create(App.class, "user-mgr", args).run(9000);
+    	AppLauncher appLauncher = AppLauncher.create();
+        
+        appLauncher.run(App.class, 8080,r->{
+        	logger.info(r);
+        }, fail->{
+        	logger.error(fail.getMessage());
+        }, args);
+        
     }
 }
 ```
-* ```PuppyApp.run()``` default port is 8080
-* ```PuppyApp.run(int webAppPort)```
-* ```PuppyApp.runWebApp()``` run only the web application
-* ```PuppyApp.runServiceApp()``` run only the service application
-* Sample application is based on spring-boot.you also can use puppy-io without spring-boot
 
 ##Web App
 ```java
