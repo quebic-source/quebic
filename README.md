@@ -8,7 +8,7 @@ Quebic is a framework for writing serverless functions to run on Dockers or Kube
   * Docker must be installed and configured.
 
 ### Getting Started
- * Download the binary files in here.
+ * Download the binary files in [here](https://github.com/quebic-source/quebic/blob/master/bin/quebic.tar.gz).
 ```
  
 ### Sample application
