@@ -3,6 +3,8 @@ Faas framework
 
 Quebic is a framework for writing serverless functions to run on Dockers or Kubernetes. You can write your functions in any language. Currently quebic supports for only Java and NodeJS.. [more](http://quebic.io/)
 
+![quebic](https://github.com/quebic-source/quebic/blob/master/docs/quebic.png)
+
 ### Prerequisities
   * JDK 1.8.X
   * Maven 3.3.X
