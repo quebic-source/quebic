@@ -1,7 +1,7 @@
 # quebic
-reactive java web-framework
+Faas framework
 
-quebic contains non-blocking web server. You can develop micro services by using quebic and you can communicate with each services easily. quebic have inbuilt Clustering and Load-Balancing mechanism. [more](http://quebic.io/)
+Quebic is a framework for writing serverless functions to run on Dockers or Kubernetes. You can write your functions in any language. Currently quebic supports for only Java and NodeJS.. [more](http://quebic.io/)
 
 ### Prerequisities
   * JDK 1.8.X
