@@ -8,7 +8,16 @@ Quebic is a framework for writing serverless functions to run on Dockers or Kube
   * Docker must be installed and configured.
 
 ### Getting Started
+#### Linux Users
  * Download the binary files in [here](https://github.com/quebic-source/quebic/blob/master/bin/quebic.tar.gz).
+#### Windows User
+ * Clone this project then build using [golang](https://golang.org/).
+ * You have to install [govendor](https://github.com/kardianos/govendor) dependency before starting to build.
+ * Then you can use govendor for downloading all the required dependencies.
+#### Run quebic-mgr
+ * quebic-mgr handles all key functionalities.
+ * ./quebic-mgr
+ 
 ```
  
 ### Sample application
