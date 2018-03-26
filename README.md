@@ -15,8 +15,10 @@ Quebic is a framework for writing serverless functions to run on Dockers or Kube
  * You have to install [govendor](https://github.com/kardianos/govendor) dependency before starting to build.
  * Then you can use govendor for downloading all the required dependencies.
 #### Run quebic-mgr
- * quebic-mgr handles all key functionalities.
- * ./quebic-mgr
+ * quebic-mgr is the main key component of quebic.
+ * It manage the functions and spin-up the function-containers.
+ * Run **quebic-mgr [options]**
+ * We will disucuss more details about the options in future section. For not just check **quebic-mgr -h** 
  
 ```
  
