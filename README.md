@@ -185,10 +185,19 @@ headersToPass: # headers going to pass with event
 
 
 ### Asynchronous invocation from Apigateway
- * quebic provides way to invoke function Asynchronous way from apigateway.
+ * Quebic provides way to invoke function Asynchronous way from apigateway.
  * After client send his request through the apigateway, He immediately gets a referance id (request-id) to track the request.
  * Then client can check the request by using that request-id from ApiGateway's request-tracker endpoint, If function already conpleted the task  client will get the result of request,otherwice he will get request-still-processing message.
  ```
  /request-tracker/{request-id}
  ```
- * This is really helpful when function takes long time to complete its task, then client have to wait untill finish the task.
+
+### Logs
+ * Quebic provides way to access function-container's native logs by using quebic cli.
+ * **testapp function logs --name [function name]**
+ * Instead of accessing native logs quebic also provides way to attach logs for perticular request context. 
+```java
+context.logger().info("log info");
+context.logger().error("log error");
+context.logger().warn("log warn");
+```
