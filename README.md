@@ -36,6 +36,7 @@ Quebic is a framework for writing serverless functions to run on Dockers or Kube
 ### Functions
 #### Create Function
 ##### Java Runtime
+###### Create .jar artifact
  * Create new maven project.
  * Add this dependency and repository into .pom file.
  ```xml
