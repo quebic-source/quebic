@@ -67,8 +67,9 @@ function:
   artifactStoredLocation: /functions/hello-function.jar # jar artifact location
   handlerPath: com.quebicfaas.examples.HelloFunction # request handler java class
   runtime: java # function runtime
-  events: # events list which function going to listen
+  events: # function going to listen these events
     - users.UserCreate
+    - users.UserUpdate
 
 route:
   requestMethod: POST
@@ -76,7 +77,6 @@ route:
   requestMapping:
     - eventAttribute: eID
       requestAttribute: id
-    
     ...
  ```
     
