@@ -147,8 +147,6 @@ route:
 ##### Inspect function details
 * quebic function inspect --name [function name]
 
-
-
 ### Routing
  * You can create routing endpoint into apigateway with quebic cli.
 ##### Routing Spec
@@ -185,3 +183,12 @@ headersToPass: # headers going to pass with event
 ##### Inspect Route details
 * quebic route inspect --name [route name]
 
+
+### Asynchronous invocation from Apigateway
+ * quebic provides way to invoke function Asynchronous way from apigateway.
+ * After client send his request through the apigateway, He immediately gets a referance id (request-id) to track the request.
+ * Then client can check the request by using that request-id, If function already conpleted the task  client will get the result of request,otherwice he will get request-still-processing message.
+ ```
+ <apigateway>/request-tracker/{request-id}
+ ```
+ * This is really helpful when function takes long time to complete its task, then client have to wait untill finish the task.
