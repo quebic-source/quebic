@@ -1,0 +1,25 @@
+function:
+  name: ms2
+  artifactStoredLocation: /home/tharanga/my/quebic-faas/quebic-faas-container-nodejs/test_function/test_function.tar
+  handlerPath: helloFunction
+  handlerFile: function_2.js
+  runtime: nodejs
+  replicas: 2
+  events:
+    - products.ProductCreate
+    - products.ProductGetByID
+    - products.ProductDelete
+
+route:
+  requestMethod: POST
+  url: /ms2
+  requestMapping:
+    - eventAttribute: eID
+      requestAttribute: id
+    - eventAttribute: eName
+      requestAttribute: name
+  headerMapping:
+    - eventAttribute: auth
+      headerAttribute: x-token
+  headersToPass:
+    - Authorization

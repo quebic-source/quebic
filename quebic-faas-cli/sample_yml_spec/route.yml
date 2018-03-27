@@ -1,0 +1,17 @@
+name: r1
+requestMethod: GET
+url: /api/orders
+async: true
+successResponseStatus: 202
+event: orders.OrderFetch
+requestMapping:
+  - eventAttribute: eID
+    requestAttribute: id
+  - eventAttribute: eName
+    requestAttribute: name
+headerMapping:
+  - eventAttribute: auth
+    headerAttribute: x-token
+headersToPass:
+  - Authorization
+  - Private-Token

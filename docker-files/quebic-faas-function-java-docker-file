@@ -1,0 +1,8 @@
+FROM quebicdocker/quebic-faas-container-java:1.0.0
+
+# /app dir is allready created by quebic-faas-container-java image
+ADD function.jar /app/function.jar
+
+ARG access_key
+
+ENV access_key $access_key

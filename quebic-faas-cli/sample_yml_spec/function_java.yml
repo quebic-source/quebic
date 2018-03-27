@@ -1,0 +1,22 @@
+function:
+  name: ms1
+  artifactStoredLocation: /home/tharanga/my/quebic-faas/quebic-faas-hellofunction-java/target/hello-function-0.0.1-SNAPSHOT.jar
+  handlerPath: com.quebicfaas.examples.HelloFunction
+  runtime: java
+  events:
+    - orders.OrderCreate
+
+route:
+  requestMethod: POST
+  url: /ms1
+  requestMapping:
+    - eventAttribute: eID
+      requestAttribute: id
+    - eventAttribute: eName
+      requestAttribute: name
+  headerMapping:
+    - eventAttribute: auth
+      headerAttribute: x-token
+  headersToPass:
+    - Authorization
+#  async: true

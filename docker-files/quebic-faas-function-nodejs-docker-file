@@ -1,0 +1,8 @@
+FROM quebicdocker/quebic-faas-container-nodejs:1.0.0
+
+# /app dir is allready created by quebic-faas-container-java image
+ADD function_handler.tar /app/function_handler/
+
+ARG access_key
+
+ENV access_key $access_key
