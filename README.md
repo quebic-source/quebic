@@ -37,7 +37,16 @@ Quebic is a framework for writing serverless functions to run on Dockers or Kube
 #### Java Runtime
 ##### Programming Model
 ###### RequestHandler<Request, Response>
- * RequestHandler is an interface which comes with quebic-runtime-java library. You can add your logic inside it's handle() method.
+ * RequestHandler is an interface which comes with [quebic-runtime-java library](https://github.com/quebic-source/quebic-runtime-java). You can add your logic inside it's handle() method.
+```java
+public class HelloFunction implements RequestHandler<Request, Response>{
+ 
+ public void handle(Request request, CallBack<Response> callback, Context context) {
+	 callback.success(new Response(1, "reply success"));
+ }
+ 
+}
+```
  
 ##### Create .jar artifact
  * Create new maven project.
