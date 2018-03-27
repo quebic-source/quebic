@@ -80,8 +80,14 @@ context.messenger().publish("users.UserValidate", user, s->{
 }, 1000 * 8);
 
 ```
+###### Logger
+* Logger provides way to attach logs for perticular request context. We will discuss more about this logger in later section.
+```java
+context.logger().info("log info");
+context.logger().error("log error");
+context.logger().warn("log warn");
+```
 
- 
 ##### Create .jar artifact
  * Create new maven project.
  * Add this dependency and repository into .pom file.
