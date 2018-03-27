@@ -172,5 +172,16 @@ headersToPass: # headers going to pass with event
   - Authorization
   - Private-Token
 ```
+#### Manage Routes with quebic cli
+##### Create Route
+* quebic route create --file [route spec file]
+	
+##### Update Route
+* quebic route update --file [route spec file]
+	
+##### List all Routes
+* quebic route ls
 
+##### Inspect Route details
+* quebic route inspect --name [route name]
 
