@@ -14,14 +14,14 @@ Quebic is a framework for writing serverless functions to run on Dockers or Kube
  * Clone this project then build using [golang](https://golang.org/).
  * You have to install [govendor](https://github.com/kardianos/govendor) dependency before starting to build.
  * Then you can use govendor for downloading all the required dependencies.
-#### Run quebic-mgr
- * quebic-mgr is the main key component of quebic.
- * It manage the functions and spin-up the function-containers.
- * Run **quebic-mgr [options]**
+#### quebic-mgr
+ * First thing is run **quebic-mgr [options]**
+ * quebic-mgr spin-up event-bus and api-gateway.
  * We will disucuss more details about the options in future section. For not just check **quebic-mgr -h** 
 
 #### quebic cli
- * quebic cli is an interactive commond line tool. You can easily manage your components by using cli. Lets look at it later.
+ * quebic cli is an interactive commond line tool. You can easily manage your functions, routing, or any other components by using cli. Lets look at it later.
  * Sample quebic cli commond
- * **quebic function create --file function_spec_file.yml **
+ * **quebic function create --file function_spec_file.yml**
+ * **quebic function ls**
 
