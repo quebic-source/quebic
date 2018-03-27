@@ -48,6 +48,14 @@ public class HelloFunction implements RequestHandler<Request, Response>{
  
 }
 ```
+
+###### Context object
+ * Context have these methods
+```java
+BaseEvent baseEvent(); // return event details comes into this function
+Messenger messenger(); // return messenger instance
+Logger logger(); // return logger instance
+```
  
 ##### Create .jar artifact
  * Create new maven project.
