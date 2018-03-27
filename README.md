@@ -5,9 +5,20 @@ Quebic is a framework for writing serverless functions to run on Dockers or Kube
 ![quebic](https://github.com/quebic-source/quebic/blob/master/docs/quebic.png)
 
 ### Getting Started
+
 #### Install Docker
- * If you have allready setup docker on your envirnment , skip this step.
- * [Install Docker guidlines](https://docs.docker.com/install/)
+ * If you have already setup docker on your envirnment ,skip this step.
+ * [Install Docker](https://docs.docker.com/install/)
+
+#### Getting Binaries
+
+##### For Linux Users
+ * Download binaries from [here](https://github.com/quebic-source/quebic/blob/master/bin/quebic.tar.gz). Save and extract it into preferred location.
+ * After extract, you can see quebic-mgr and quebic cli inside that dir. 
+ 
+##### For Windows Users
+ * [Install golang into your envirnment](https://golang.org/doc/install). 
+
 #### Linux Users
  * Download the binary files in [here](https://github.com/quebic-source/quebic/blob/master/bin/quebic.tar.gz).
 #### Windows User
