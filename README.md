@@ -31,8 +31,6 @@ Quebic is a framework for writing serverless functions to run on Dockers or Kube
  * Eg: **quebic-mgr --deployment kubernetes**
  * We will discuss more details about configurations in a later section. 
  
- 
- 
 ### Functions
 #### Java Runtime
 ##### Programming Model
@@ -112,7 +110,7 @@ context.logger().warn("log warn");
  * Run **mvn clean package**
  
 ##### Deployment Spec
- * Create .yml spec file by describing how you want to deploy your functions into quebic. This is code snippet for deployment spec
+ * Deployment .yml spec file by describing how you want to deploy your functions into quebic. This is code snippet for deployment spec
  ```yml
 function:
   name: hello-function # function name 
@@ -148,4 +146,31 @@ route:
 
 ##### Inspect function details
 * quebic function inspect --name [function name]
-	
+
+
+
+### Routing
+ * You can create routing endpoint into apigateway with quebic cli.
+##### Routing Spec
+ * Routing .yml spec is used to describe how it behave when invoke it.
+```yml
+name: users_route # route name just for identify
+requestMethod: POST 
+url: /users
+async: true # enable asynchronous invocation
+successResponseStatus: 201 # default response http status code
+event: users.UserCreate # event going to send
+requestMapping:
+  - eventAttribute: eID # attribute name which funtion going to access in event's payload
+    requestAttribute: id # attribute name which come in http request
+  - eventAttribute: eName
+    requestAttribute: name
+headerMapping:
+  - eventAttribute: auth # attribute name which funtion going to access in event's payload
+    headerAttribute: x-token # attribute name which come in http header
+headersToPass: # headers going to pass with event
+  - Authorization
+  - Private-Token
+```
+
+
