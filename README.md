@@ -131,4 +131,21 @@ route:
       requestAttribute: id
     ...
  ```
+#### NodeJS Runtime
 
+#### Manage your functions with quebic cli
+##### Create function
+* quebic function create --file <deployment spec file>
+	
+##### Update function
+* quebic function update --file <deployment spec file>
+
+##### Stop function
+* quebic function stop --name <function name>
+	
+##### List all functions
+* quebic function ls
+
+##### Inspect function details
+* quebic function inspect --name <function name>
+	
