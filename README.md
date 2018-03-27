@@ -198,6 +198,6 @@ headersToPass: # headers going to pass with event
  * Instead of accessing native logs quebic also provides way to attach logs for perticular request context. 
 ```java
 context.logger().info("log info");
-context.logger().error("log error");
-context.logger().warn("log warn");
 ```
+ * You can inspect these logs by using cli 
+ * testapp request-tracker logs --request-id [request id]
