@@ -194,10 +194,24 @@ headersToPass: # headers going to pass with event
 
 ### Logs
  * Quebic provides way to access function-container's native logs by using quebic cli.
- * **testapp function logs --name [function name]**
+ * **quebic function logs --name [function name]**
  * Instead of accessing native logs quebic also provides way to attach logs for perticular request context. 
 ```java
 context.logger().info("log info");
 ```
  * You can inspect these logs by using cli 
- * testapp request-tracker logs --request-id [request id]
+ * **quebic request-tracker logs --request-id [request id]**
+ 
+ 
+ ### Configurations
+ #### Quebic manager configurations
+ * Quebic manager config file is located at $HOME/.quebic-faas/manager-config.yml
+ * Also you can pass arguments to the quebic manager in runtime.
+ * Run **quebic-mgr -h** to list down all available commands. 
+ 
+  #### Quebic CLI configurations
+ * Quebic cli config file is located at $HOME/.quebic-faas/cli-config.yml
+ * Also you can pass arguments to the quebic cli in runtime.
+ * Run **quebic -h** to list down all available commands. 
+ 
+ 
