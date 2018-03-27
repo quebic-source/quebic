@@ -20,6 +20,9 @@ Quebic is a framework for writing serverless functions to run on Dockers or Kube
  * [Install golang into your envirnment](https://golang.org/doc/install). 
  * Get [govendor](https://github.com/kardianos/govendor) tool. 
  * Run **govendor fetch**. This will download all the required dependencies for quebic.
+ * Run for build quebic-mgr **go install quebic-faas/quebic-faas-mgr**
+ * Run for build quebic cli **go install quebic-faas/quebic-faas-cli**
+ * Congrats !!! Now you can find your binaries from $GOPATH/bin dir.
 
 #### Linux Users
  * Download the binary files in [here](https://github.com/quebic-source/quebic/blob/master/bin/quebic.tar.gz).
