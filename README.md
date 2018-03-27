@@ -34,9 +34,12 @@ Quebic is a framework for writing serverless functions to run on Dockers or Kube
  
  
 ### Functions
-#### Create Function
-##### Java Runtime
-###### Create .jar artifact
+#### Java Runtime
+##### Programming Model
+###### RequestHandler<Request, Response>
+ * RequestHandler is an interface which comes with quebic-runtime-java library. You can add your logic inside it's handle() method.
+ 
+##### Create .jar artifact
  * Create new maven project.
  * Add this dependency and repository into .pom file.
  ```xml
@@ -59,7 +62,7 @@ Quebic is a framework for writing serverless functions to run on Dockers or Kube
 ```
  * Run **mvn clean package**
  
-###### Deployment Spec
+##### Deployment Spec
  * Create .yml spec file by describing how you want to deploy your functions into quebic. This is code snippet for deployment spec
  ```yml
 function:
@@ -79,8 +82,4 @@ route:
       requestAttribute: id
     ...
  ```
-    
- 
-#### RequestHandler<Request, Response>
- * RequestHandler is an interface which comes with quebic-runtime-java library. You can add your logic inside it's handle() method.
 
