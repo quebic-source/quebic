@@ -38,6 +38,7 @@ Quebic is a framework for writing serverless functions to run on Dockers or Kube
 ##### Programming Model
 ###### RequestHandler<Request, Response>
  * RequestHandler is an interface which comes with [quebic-runtime-java library](https://github.com/quebic-source/quebic-runtime-java). You can add your logic inside it's handle() method.
+ * The Request Type and Response Type can be any Primitive datatype or Object.
 ```java
 public class HelloFunction implements RequestHandler<Request, Response>{
  
