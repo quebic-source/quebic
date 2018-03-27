@@ -59,6 +59,29 @@ Quebic is a framework for writing serverless functions to run on Dockers or Kube
 ```
  * Run **mvn clean package**
  
+###### Deployment Spec
+ * Create .yml spec file by describing how you want to deploy your functions into quebic.
+ ```yml
+function:
+  name: hello-function
+  artifactStoredLocation: /functions/quebic-faas-hellofunction-java/target/hello-function-0.0.1-SNAPSHOT.jar
+  handlerPath: com.quebicfaas.examples.HelloFunction
+  runtime: java
+  events:
+    - users.UserCreate
+
+route:
+  requestMethod: POST
+  url: /users
+  requestMapping:
+    - eventAttribute: eID
+      requestAttribute: id
+    
+    .....
+
+ ```
+    
+ 
 #### RequestHandler<Request, Response>
  * RequestHandler is an interface which comes with quebic-runtime-java library. You can add your logic inside it's handle() method.
 
