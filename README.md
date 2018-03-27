@@ -24,4 +24,27 @@ Quebic is a framework for writing serverless functions to run on Dockers or Kube
  * Sample quebic cli commond
  * **quebic function create --file function_spec_file.yml**
  * **quebic function ls**
+ 
+### Functions
+#### Java Runtime
+ * Create new maven project.
+ * Add this dependency and repository into .pom file.
+ ```xml
+<dependency>
+    <groupId>com.quebic.faas.runtime</groupId>
+    <artifactId>quebic-faas-runtime-java</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+</dependency>
+
+<repositories>
+    <repository>
+     <id>quebic-runtime-java-mvn-repo</id>
+     <url>https://raw.github.com/quebic-source/quebic-runtime-java/mvn-repo/</url>
+     <snapshots>
+      <enabled>true</enabled>
+      <updatePolicy>always</updatePolicy>
+     </snapshots>
+    </repository>
+</repositories>
+```
 
