@@ -60,14 +60,14 @@ Quebic is a framework for writing serverless functions to run on Dockers or Kube
  * Run **mvn clean package**
  
 ###### Deployment Spec
- * Create .yml spec file by describing how you want to deploy your functions into quebic.
+ * Create .yml spec file by describing how you want to deploy your functions into quebic. This is code snippet for deployment spec
  ```yml
 function:
-  name: hello-function
-  artifactStoredLocation: /functions/quebic-faas-hellofunction-java/target/hello-function-0.0.1-SNAPSHOT.jar
-  handlerPath: com.quebicfaas.examples.HelloFunction
-  runtime: java
-  events:
+  name: hello-function # function name 
+  artifactStoredLocation: /functions/hello-function.jar # jar artifact location
+  handlerPath: com.quebicfaas.examples.HelloFunction # request handler java class
+  runtime: java # function runtime
+  events: # events list which function going to listen
     - users.UserCreate
 
 route:
@@ -77,8 +77,7 @@ route:
     - eventAttribute: eID
       requestAttribute: id
     
-    .....
-
+    ...
  ```
     
  
