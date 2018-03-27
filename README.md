@@ -49,12 +49,23 @@ public class HelloFunction implements RequestHandler<Request, Response>{
 }
 ```
 
-###### Context object
- * Context have these methods
+###### Context
+ * Context have these methods.
 ```java
 BaseEvent baseEvent(); // return event details comes into this function
 Messenger messenger(); // return messenger instance
 Logger logger(); // return logger instance
+```
+
+###### CallBack
+* CallBack provides way to reply message.
+```java
+callback.success(); //reply 200 status code with empty reply data
+callback.success("reply success"); //reply 200 status code with reply data
+callback.success(201, "reply success"); //reply 201 status code with reply data
+
+callBack.failure("Error occurred"); //reply 500 status code with reply err-data
+callBack.failure(401, "Error occurred"); //reply 401 status code with reply err-data
 ```
  
 ##### Create .jar artifact
