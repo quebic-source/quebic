@@ -47,4 +47,4 @@ Quebic is a framework for writing serverless functions to run on Dockers or Kube
     </repository>
 </repositories>
 ```
-
+#### RequestHandler<Request, Response>
