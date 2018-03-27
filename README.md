@@ -4,7 +4,7 @@ Quebic is a framework for writing serverless functions to run on Dockers or Kube
 
 ![quebic](https://github.com/quebic-source/quebic/blob/master/docs/quebic.png)
 
-### Getting Started
+## Getting Started
 
 #### Install Docker
  * If you have already setup docker on your envirnment ,skip this step.
@@ -31,7 +31,7 @@ Quebic is a framework for writing serverless functions to run on Dockers or Kube
  * Eg: **quebic-mgr --deployment kubernetes**
  * We will discuss more details about configurations in a later section. 
  
-### Functions
+## Functions
 #### Java Runtime
 ##### Programming Model
 ###### RequestHandler<Request, Response>
@@ -147,7 +147,7 @@ route:
 ##### Inspect function details
 * quebic function inspect --name [function name]
 
-### Routing
+## Routing
  * You can create routing endpoint into apigateway with quebic cli.
 ##### Routing Spec
  * Routing .yml spec is used to describe how it behave when invoke it.
@@ -184,7 +184,7 @@ headersToPass: # headers going to pass with event
 * quebic route inspect --name [route name]
 
 
-### Asynchronous invocation from Apigateway
+## Asynchronous invocation from Apigateway
  * Quebic provides way to invoke function Asynchronous way from apigateway.
  * After client send his request through the apigateway, He immediately gets a referance id (request-id) to track the request.
  * Then client can check the request by using that request-id from ApiGateway's request-tracker endpoint, If function already conpleted the task  client will get the result of request,otherwice he will get request-still-processing message.
@@ -192,7 +192,7 @@ headersToPass: # headers going to pass with event
  /request-tracker/{request-id}
  ```
 
-### Logs
+## Logs
  * Quebic provides way to access function-container's native logs by using quebic cli.
  * **quebic function logs --name [function name]**
  * Instead of accessing native logs quebic also provides way to attach logs for perticular request context. 
@@ -203,15 +203,20 @@ context.logger().info("log info");
  * **quebic request-tracker logs --request-id [request id]**
  
  
- ### Configurations
+ ## Configurations
  #### Quebic manager configurations
  * Quebic manager config file is located at $HOME/.quebic-faas/manager-config.yml
  * Also you can pass arguments to the quebic manager in runtime.
  * Run **quebic-mgr -h** to list down all available commands. 
  
-  #### Quebic CLI configurations
+ #### Quebic CLI configurations
  * Quebic cli config file is located at $HOME/.quebic-faas/cli-config.yml
  * Also you can pass arguments to the quebic cli in runtime.
  * Run **quebic -h** to list down all available commands. 
  
- 
+ ## Authors
+ * Tharanga Thennakoon - tharanganilupul@gmail.com 
+ * [Linkedin](https://lk.linkedin.com/in/tharanga-thennakoon)
+
+ ## License
+ * This project is licensed under the Apache Licensed V2
