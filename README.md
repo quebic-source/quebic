@@ -12,11 +12,11 @@ Quebic is a framework for writing serverless functions to run on Dockers or Kube
 
 #### Getting Binaries
 
-##### For Linux Users
+###### For Linux Users
  * Download binaries from [here](https://github.com/quebic-source/quebic/blob/master/bin/quebic.tar.gz). Save and extract it into preferred location.
  * After extract, you can see quebic-mgr and quebic cli inside that dir. 
  
-##### For Windows Users
+###### For Windows Users
  * [Install golang into your envirnment](https://golang.org/doc/install). 
  * Get [govendor](https://github.com/kardianos/govendor) tool. 
  * Run **govendor fetch**. This will download all the required dependencies for quebic.
@@ -24,22 +24,8 @@ Quebic is a framework for writing serverless functions to run on Dockers or Kube
  * Run for build quebic cli **go install quebic-faas/quebic-faas-cli**
  * Congrats !!! Now you can find your binaries from $GOPATH/bin dir.
 
-#### Linux Users
- * Download the binary files in [here](https://github.com/quebic-source/quebic/blob/master/bin/quebic.tar.gz).
-#### Windows User
- * Clone this project then build using [golang](https://golang.org/).
- * You have to install [govendor](https://github.com/kardianos/govendor) dependency before starting to build.
- * Then you can use govendor for downloading all the required dependencies.
-#### quebic-mgr
- * First thing is run **quebic-mgr [options]**
- * quebic-mgr spin-up event-bus and api-gateway.
- * We will disucuss more details about the options in future section. For not just check **quebic-mgr -h** 
+#### Run quebic-manager
 
-#### quebic cli
- * quebic cli is an interactive commond line tool. You can easily manage your functions, routing, or any other components by using cli. Lets look at it later.
- * Sample quebic cli commond
- * **quebic function create --file function_spec_file.yml**
- * **quebic function ls**
  
 ### Functions
 #### Java Runtime
