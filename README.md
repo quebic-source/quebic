@@ -187,8 +187,8 @@ headersToPass: # headers going to pass with event
 ### Asynchronous invocation from Apigateway
  * quebic provides way to invoke function Asynchronous way from apigateway.
  * After client send his request through the apigateway, He immediately gets a referance id (request-id) to track the request.
- * Then client can check the request by using that request-id, If function already conpleted the task  client will get the result of request,otherwice he will get request-still-processing message.
+ * Then client can check the request by using that request-id from ApiGateway's request-tracker endpoint, If function already conpleted the task  client will get the result of request,otherwice he will get request-still-processing message.
  ```
- <apigateway>/request-tracker/{request-id}
+ /request-tracker/{request-id}
  ```
  * This is really helpful when function takes long time to complete its task, then client have to wait untill finish the task.
