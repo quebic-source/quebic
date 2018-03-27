@@ -58,7 +58,7 @@ Logger logger(); // return logger instance
 ```
 
 ###### CallBack
-* CallBack provides way to reply message.
+* CallBack provides way to reply.
 ```java
 callback.success(); //reply 200 status code with empty reply data
 callback.success("reply success"); //reply 200 status code with reply data
@@ -67,6 +67,20 @@ callback.success(201, "reply success"); //reply 201 status code with reply data
 callBack.failure("Error occurred"); //reply 500 status code with reply err-data
 callBack.failure(401, "Error occurred"); //reply 401 status code with reply err-data
 ```
+
+###### Messenger
+* Messenger provides way to publish events.
+* void publish(String eventID, Object eventPayload, MessageHandler successHandler,ErrorHandler errorHandler,int timeout)throws MessengerException;
+```java
+context.messenger().publish("users.UserValidate", user, s->{
+  user.setId(UUID.randomUUID().toString());
+  callBack.success(201, user);
+}, e->{
+  callBack.failure(e.statuscode(), e.error());
+}, 1000 * 8);
+
+```
+
  
 ##### Create .jar artifact
  * Create new maven project.
