@@ -12,11 +12,11 @@ Quebic is a framework for writing serverless functions to run on Dockers or Kube
 
 #### Getting Binaries
 
-###### For Linux Users
+##### For Linux Users
  * Download binaries from [here](https://github.com/quebic-source/quebic/blob/master/bin/quebic.tar.gz). Save and extract it into preferred location.
  * After extract, you can see quebic-mgr and quebic cli inside that dir. 
  
-###### For Windows Users
+##### For Windows Users
  * [Install golang into your envirnment](https://golang.org/doc/install). 
  * Get [govendor](https://github.com/kardianos/govendor) tool. 
  * Run **govendor fetch**. This will download all the required dependencies for quebic.
@@ -25,7 +25,13 @@ Quebic is a framework for writing serverless functions to run on Dockers or Kube
  * Congrats !!! Now you can find your binaries from $GOPATH/bin dir.
 
 #### Run quebic-manager
-
+ * Jump into quebic binaries location. Then run this commond **quebic-mgr**
+ * By default quebic-mgr deploy its components ( eventbus, apigateway, functions ) as docker services. when you are in docker swrm manager it can deploy services which are created by quebic, among its cluster.
+ * If you  want to deploy qubic  into kubernetes, set --deployment argumnet into kubernetes. 
+ * Eg: **quebic-mgr --deployment kubernetes**
+ * We will discuss more details about configurations in a later section. 
+ 
+ 
  
 ### Functions
 #### Java Runtime
