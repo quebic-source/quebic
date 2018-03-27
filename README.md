@@ -34,7 +34,8 @@ Quebic is a framework for writing serverless functions to run on Dockers or Kube
  
  
 ### Functions
-#### Java Runtime
+#### Create Function
+##### Java Runtime
  * Create new maven project.
  * Add this dependency and repository into .pom file.
  ```xml
@@ -55,6 +56,8 @@ Quebic is a framework for writing serverless functions to run on Dockers or Kube
     </repository>
 </repositories>
 ```
+ * Run **mvn clean package**
+ 
 #### RequestHandler<Request, Response>
  * RequestHandler is an interface which comes with quebic-runtime-java library. You can add your logic inside it's handle() method.
 
