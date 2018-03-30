@@ -13,7 +13,7 @@ Quebic is a framework for writing serverless functions to run on Dockers or Kube
 #### Getting Binaries
 
 ###### For Linux Users
- * Download binaries from [here](https://github.com/quebic-source/quebic/blob/master/bin/quebic.tar.gz). Save and extract it into preferred location.
+ * Download binaries from [here](https://github.com/quebic-source/quebic/releases/download/v0.1.0-alpha/quebic-v0.1.0-alpha-linux.tar.gz). Save and extract it into preferred location.
  * After extract, you can see quebic-mgr and quebic cli inside that dir. 
  
 ###### For Windows Users
