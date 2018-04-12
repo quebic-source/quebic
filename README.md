@@ -13,7 +13,7 @@ Quebic is a framework for writing serverless functions to run on Dockers or Kube
 * [Configurations](#configurations)
 * [Example Project](https://github.com/quebic-source/quebic-sample-project)
 * [Consultants](#consultants)
-* [Releses](#v.5)
+* [Releses](https://github.com/quebic-source/quebic/releases)
 
 ## <a name="getting-started"></a>Getting Started
 
@@ -225,7 +225,7 @@ context.logger().info("log info");
  * Also you can pass arguments to the quebic cli in runtime.
  * Run **quebic -h** to list down all available commands. 
  
- ## Authors
+ ##  <a name="consultants"></a>Authors
  * Tharanga Thennakoon - tharanganilupul@gmail.com 
  * [Linkedin](https://lk.linkedin.com/in/tharanga-thennakoon)
 
