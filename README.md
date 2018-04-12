@@ -1,6 +1,6 @@
 # Quebic - FaaS Framework
 
-Quebic is a framework for writing serverless functions to run on Dockers or Kubernetes. You can write your functions in any language. Currently quebic supports only for Java and NodeJS. [Sample Project](https://github.com/quebic-source/quebic-sample-project)
+Quebic is a framework for writing serverless functions to run on Dockers or Kubernetes. You can write your functions in any language. Currently quebic supports only for Java and NodeJS. [Example Project](https://github.com/quebic-source/quebic-sample-project)
 
 ![quebic](https://github.com/quebic-source/quebic/blob/master/docs/quebic.png)
 
@@ -8,13 +8,12 @@ Quebic is a framework for writing serverless functions to run on Dockers or Kube
 * [Getting Started](#getting-started)
 * [Functions](#functions)
 * [Routing](#routing)
-* [Features](#features)
-* [Plugins](#v1-plugins)
-* [Example Projects](#v1-projects)
-* [Contributing](#contributing)
-* [Community](#community)
+* [Asynchronous invocation from Apigateway](#async)
+* [Logs](#logs)
+* [Configurations](#configurations)
+* [Example Project](https://github.com/quebic-source/quebic-sample-project)
 * [Consultants](#consultants)
-* [Previous Version 0.5.x](#v.5)
+* [Releses](#v.5)
 
 ## <a name="getting-started"></a>Getting Started
 
@@ -196,7 +195,7 @@ headersToPass: # headers going to pass with event
 * quebic route inspect --name [route name]
 
 
-## Asynchronous invocation from Apigateway
+## <a name="async"></a>Asynchronous invocation from Apigateway
  * Quebic provides way to invoke function Asynchronous way from apigateway.
  * After client send his request through the apigateway, He immediately gets a referance id (request-id) to track the request.
  * Then client can check the request by using that request-id from ApiGateway's request-tracker endpoint, If function already conpleted the task  client will get the result of request,otherwice he will get request-still-processing message.
@@ -204,7 +203,7 @@ headersToPass: # headers going to pass with event
  /request-tracker/{request-id}
  ```
 
-## Logs
+## <a name="logs"></a>Logs
  * Quebic provides way to access function-container's native logs by using quebic cli.
  * **quebic function logs --name [function name]**
  * Instead of accessing native logs quebic also provides way to attach logs for perticular request context. 
@@ -215,7 +214,7 @@ context.logger().info("log info");
  * **quebic request-tracker logs --request-id [request id]**
  
  
- ## Configurations
+ ## <a name="configurations"></a>Configurations
  #### Quebic manager configurations
  * Quebic manager config file is located at $HOME/.quebic-faas/manager-config.yml
  * Also you can pass arguments to the quebic manager in runtime.
