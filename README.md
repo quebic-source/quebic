@@ -149,8 +149,8 @@ route:
 ##### Update function
 * quebic function update --file [deployment spec file]
 
-##### Stop function
-* quebic function stop --name [function name]
+##### Delete function
+* quebic function delete --name [function name]
 	
 ##### List all functions
 * quebic function ls
