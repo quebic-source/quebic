@@ -149,6 +149,10 @@ route:
 ##### Update function
 * quebic function update --file [deployment spec file]
 
+##### Deploy function
+* deploy enable to upgrade or downgrade function with version
+* quebic function deploy --name [function name] --version [version]
+
 ##### Delete function
 * quebic function delete --name [function name]
 	
