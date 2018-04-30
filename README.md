@@ -125,8 +125,8 @@ context.logger().warn("log warn");
  ```yml
 function:
   name: hello-function # function name 
-  artifactStoredLocation: /functions/hello-function.jar # jar artifact location
-  handlerPath: com.quebicfaas.examples.HelloFunction # request handler java class
+  source: /functions/hello-function.jar # jar artifact location
+  handler: com.quebicfaas.examples.HelloFunction # request handler java class
   runtime: java # function runtime
   events: # function going to listen these events
     - users.UserCreate
