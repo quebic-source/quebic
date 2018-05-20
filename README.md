@@ -40,6 +40,7 @@ Quebic is a framework for writing serverless functions to run on Kubernetes. You
  
 ## <a name="functions"></a>Functions
 #### Java Runtime
+##### [Example](https://github.com/quebic-source/quebic-sample-project/tree/master/java-example)
 ##### Programming Model
 ###### RequestHandler<Request, Response>
  * RequestHandler is an interface which comes with [quebic-runtime-java library](https://github.com/quebic-source/quebic-runtime-java). You can add your logic inside it's handle() method.
@@ -65,12 +66,12 @@ Logger logger(); // return logger instance
 ###### CallBack
 * CallBack provides way to reply.
 ```java
-callback.success(); //reply 200 status code with empty reply data
-callback.success("reply success"); //reply 200 status code with reply data
-callback.success(201, "reply success"); //reply 201 status code with reply data
+callback.success(); //reply 200 status code with empty data
+callback.success("reply success"); //reply 200 status code with data
+callback.success(201, "reply success"); //reply 201 status code with data
 
-callBack.failure("Error occurred"); //reply 500 status code with reply err-data
-callBack.failure(401, "Error occurred"); //reply 401 status code with reply err-data
+callBack.failure("Error occurred"); //reply 500 status code with err-data
+callBack.failure(401, "Error occurred"); //reply 401 status code with error-data
 ```
 
 ###### Messenger
@@ -137,6 +138,34 @@ route:
     ...
  ```
 #### NodeJS Runtime
+##### [Example](https://github.com/quebic-source/quebic-sample-project/tree/master/nodejs-example)
+##### Programming Model
+###### RequestHandler
+ * Write your logic inside the handler.
+```javascript
+exports.validationHandler = function(payload, context, callback){
+    
+    if(validateUser(payload)){
+        
+        callback(null, true, 200);
+
+    }else{
+
+        callback(new Error('Not a valid e-mail address'), null, 400);
+
+    }
+
+}
+```
+###### CallBack
+* CallBack provides way to reply.
+```javascript
+callback(); //reply 200 status code with empty data
+callback(null, "success");  //reply 200 status code with data
+callback(null, "success", 201);  //reply 201 status code with data
+callback(error); //reply 500 status code with with error-data
+callback(error, null, 401); //reply 401 status code with with error-data 
+```
 
 #### Manage your functions with quebic cli
 ##### Create function
