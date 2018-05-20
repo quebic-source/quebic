@@ -36,11 +36,7 @@ Quebic is a framework for writing serverless functions to run on Kubernetes. You
  * Congrats !!! Now you can find your binaries from $GOPATH/bin dir.
 
 #### Run quebic-manager
- * Jump into quebic binaries location. Then run this commond **quebic-mgr**
- * By default quebic-mgr deploy its components ( eventbus, apigateway, functions ) as docker services. when you are in docker swrm manager it can deploy services which are created by quebic, among its cluster.
- * If you  want to deploy qubic  into kubernetes, set --deployment argumnet into kubernetes. 
- * Eg: **quebic-mgr --deployment kubernetes**
- * We will discuss more details about configurations in a later section. 
+ * Jump into quebic binaries location. Then run this **quebic-mgr**
  
 ## <a name="functions"></a>Functions
 #### Java Runtime
