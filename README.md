@@ -166,6 +166,22 @@ callback(null, "success", 201);  //reply 201 status code with data
 callback(error); //reply 500 status code with with error-data
 callback(error, null, 401); //reply 401 status code with with error-data 
 ```
+##### Deployment Spec
+ * Deployment .yml spec file by describing how you want to deploy your functions into quebic.
+ * Package your whole nodejs project dir into .tar file. Then set your .tar file location into source field in deployment spec.
+ * If the handler file app.js then handler file needs to set like this *app.helloHandler*
+ * If you are working on single javascript file. Then just set your .js file location into source field. No need to package.
+ ```yml
+  function:
+    name: hello-function # function name 
+    source: /functions/hello-function.tar # tar package location
+    handler: app.helloHandler # request handler 
+    runtime: nodejs # function runtime
+    replicas: 2 # replicas count
+    events: # function going to listen these events
+      - users.UserValidate
+    ...
+ ```
 
 #### Manage your functions with quebic cli
 ##### Create function
@@ -174,8 +190,7 @@ callback(error, null, 401); //reply 401 status code with with error-data
 ##### Update function
 * quebic function update --file [deployment spec file]
 
-##### Deploy function
-* deploy enable to upgrade or downgrade function with version
+##### Upgrade / Downgrade function
 * quebic function deploy --name [function name] --version [version]
 
 ##### Delete function
@@ -188,7 +203,7 @@ callback(error, null, 401); //reply 401 status code with with error-data
 * quebic function inspect --name [function name]
 
 ## <a name="routing"></a>Routing
- * You can create routing endpoint into apigateway with quebic cli.
+ * You can create routing endpoint to fire events from apigateway.
 ##### Routing Spec
  * Routing .yml spec is used to describe how it behave when invoke it.
 ```yml
