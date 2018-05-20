@@ -1,18 +1,17 @@
-/*
-Copyright 2018 Tharanga Nilupul Thennakoon
+//    Copyright 2018 Tharanga Nilupul Thennakoon
+//
+//    Licensed under the Apache License, Version 2.0 (the "License");
+//    you may not use this file except in compliance with the License.
+//    You may obtain a copy of the License at
+//
+//        http://www.apache.org/licenses/LICENSE-2.0
+//
+//    Unless required by applicable law or agreed to in writing, software
+//    distributed under the License is distributed on an "AS IS" BASIS,
+//    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//    See the License for the specific language governing permissions and
+//    limitations under the License.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-	http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
 package httphandler
 
 import (
@@ -23,9 +22,9 @@ import (
 	"net/http"
 	_messenger "quebic-faas/messenger"
 	"quebic-faas/quebic-faas-mgr/components"
-	"quebic-faas/quebic-faas-mgr/components/kube_components"
 	"quebic-faas/quebic-faas-mgr/config"
 	"quebic-faas/quebic-faas-mgr/dao"
+	dep "quebic-faas/quebic-faas-mgr/deployment"
 	"quebic-faas/quebic-faas-mgr/logger"
 	"quebic-faas/types"
 	"strings"
@@ -40,6 +39,7 @@ type Httphandler struct {
 	db         *bolt.DB
 	messenger  _messenger.Messenger
 	loggerUtil logger.Logger
+	deployment dep.Deployment
 }
 
 //SetUpHTTPHandlers setUpHTTPHandlers
@@ -48,18 +48,19 @@ func SetUpHTTPHandlers(
 	router *mux.Router,
 	db *bolt.DB,
 	messenger _messenger.Messenger,
-	loggerUtil logger.Logger) {
+	loggerUtil logger.Logger,
+	deployment dep.Deployment) {
 
 	http := &Httphandler{
 		config:     config,
 		db:         db,
 		messenger:  messenger,
 		loggerUtil: loggerUtil,
+		deployment: deployment,
 	}
 	http.EventHandler(router)
 	http.ResourceHandler(router)
 	http.FunctionHandler(router)
-	http.FunctionContainerHandler(router)
 	http.MessengerHandler(router)
 	http.AuthHandler(router)
 	http.ApigatewayDataServe(router)
@@ -177,26 +178,13 @@ func Trim(s string) string {
 	return strings.Trim(s, " ")
 }
 
-func restartAPIGateway(db *bolt.DB, appConfig config.AppConfig) {
+func restartAPIGateway(appConfig config.AppConfig, deployment dep.Deployment) {
 
 	go func() {
 
-		if appConfig.Deployment == config.Deployment_Docker {
-
-			err := components.ApigatewaySetup(db, appConfig)
-			if err != nil {
-				log.Printf("apigateway re-start failed : %v", err)
-			}
-
-		} else {
-
-			// in here appConfig is not going to changed. but that is fine because cluserIP is not changed.
-			// It is using previous IP
-			err := kube_components.ApigatewaySetup(db, &appConfig)
-			if err != nil {
-				log.Printf("apigateway re-start failed : %v", err)
-			}
-
+		err := components.ApigatewaySetup(&appConfig, deployment)
+		if err != nil {
+			log.Printf("apigateway re-start failed : %v", err)
 		}
 
 	}()

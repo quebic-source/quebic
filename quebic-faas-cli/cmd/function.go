@@ -1,3 +1,17 @@
+//    Copyright 2018 Tharanga Nilupul Thennakoon
+//
+//    Licensed under the Apache License, Version 2.0 (the "License");
+//    you may not use this file except in compliance with the License.
+//    You may obtain a copy of the License at
+//
+//        http://www.apache.org/licenses/LICENSE-2.0
+//
+//    Unless required by applicable law or agreed to in writing, software
+//    distributed under the License is distributed on an "AS IS" BASIS,
+//    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//    See the License for the specific language governing permissions and
+//    limitations under the License.
+
 package cmd
 
 import (
@@ -14,7 +28,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
+//var functionSpecFile string
+//var functionArtifactFile string
 var functionInputFile string
+
+var functionName string
+var functionVersion string
 var functionStart bool
 
 func init() {
@@ -33,12 +52,10 @@ func setupFunctionCmds() {
 	//function
 	functionCmd.AddCommand(functionCreateCmd)
 	functionCmd.AddCommand(functionUpdateCmd)
+	functionCmd.AddCommand(functionDeployCmd)
+	functionCmd.AddCommand(functionDeleteCmd)
 	functionCmd.AddCommand(functionGetALLCmd)
 	functionCmd.AddCommand(functionInspectCmd)
-
-	//function-container
-	functionCmd.AddCommand(functionDeployCmd)
-	functionCmd.AddCommand(functionStopCmd)
 
 	//function-logs
 	functionCmd.AddCommand(functionLogsCmd)
@@ -48,13 +65,21 @@ func setupFunctionCmds() {
 func setupFunctionFlags() {
 
 	//function-create
-	functionCreateCmd.PersistentFlags().StringVarP(&functionInputFile, "file", "f", "function.yml", "function input file")
+	functionCreateCmd.PersistentFlags().StringVarP(&functionInputFile, "file", "f", "function.yml", "function spec file")
 	functionCreateCmd.PersistentFlags().BoolVarP(&functionStart, "start", "s", true, "if true function-container will start. otherwise not")
 
 	//function-update
-	functionUpdateCmd.PersistentFlags().StringVarP(&functionInputFile, "file", "f", "function.yml", "function input file")
+	functionUpdateCmd.PersistentFlags().StringVarP(&functionInputFile, "file", "f", "function.yml", "function spec file")
 	functionUpdateCmd.PersistentFlags().BoolVarP(&functionStart, "start", "s", true, "if true function-container will start. otherwise not")
 
+	//function-deploy
+	functionDeployCmd.PersistentFlags().StringVarP(&functionName, "name", "n", "", "function name")
+	functionDeployCmd.PersistentFlags().StringVarP(&functionVersion, "version", "v", "", "function version")
+
+	//function-delete
+	functionDeleteCmd.PersistentFlags().StringVarP(&functionName, "name", "n", "", "function name")
+
+	//function-inspect
 	functionInspectCmd.PersistentFlags().StringVarP(&functionName, "name", "n", "", "function name")
 
 }
@@ -74,6 +99,24 @@ var functionUpdateCmd = &cobra.Command{
 	Long:  `function : update`,
 	Run: func(cmd *cobra.Command, args []string) {
 		functionSave(cmd, args, false)
+	},
+}
+
+var functionDeployCmd = &cobra.Command{
+	Use:   "deploy",
+	Short: "function : deploy",
+	Long:  `function : deploy`,
+	Run: func(cmd *cobra.Command, args []string) {
+		functionDeploy(cmd, args)
+	},
+}
+
+var functionDeleteCmd = &cobra.Command{
+	Use:   "delete",
+	Short: "function : delete",
+	Long:  `function : delete`,
+	Run: func(cmd *cobra.Command, args []string) {
+		functionDelete(cmd, args, functionName)
 	},
 }
 
@@ -98,7 +141,7 @@ var functionInspectCmd = &cobra.Command{
 func functionSave(cmd *cobra.Command, args []string, isAdd bool) {
 
 	functionDTO := &types.FunctionDTO{}
-	err := common.ParseYAMLToObject(functionInputFile, functionDTO)
+	err := common.ParseYAMLFileToObject(functionInputFile, functionDTO)
 	if err != nil {
 		prepareError(cmd, err)
 	}
@@ -116,11 +159,43 @@ func functionSave(cmd *cobra.Command, args []string, isAdd bool) {
 		prepareErrorResponse(cmd, errResponse)
 	}
 
-	color.Green("%s function : saved", functionDTO.Function.GetID())
+	color.Green("%s:%s function saved", functionDTO.Function.GetID(), functionDTO.Function.Version)
 
-	if functionStart {
-		functionContainerOP(cmd, args, function_container_op_deploy, functionDTO.Function.GetID())
+}
+
+func functionDeploy(cmd *cobra.Command, args []string) {
+
+	function := &types.Function{Name: functionName, Version: functionVersion}
+
+	mgrService := appContainer.GetMgrService()
+
+	errResponse := mgrService.FunctionDeploy(function)
+
+	if errResponse != nil {
+		prepareErrorResponse(cmd, errResponse)
 	}
+
+	color.Green("%s:%s function deployed", function.GetID(), function.Version)
+
+}
+
+func functionDelete(cmd *cobra.Command, args []string, fID string) {
+
+	if fID == "" {
+		prepareError(cmd, fmt.Errorf("function-id should not be empty"))
+	}
+
+	function := &types.Function{Name: fID}
+
+	mgrService := appContainer.GetMgrService()
+
+	errResponse := mgrService.FunctionDelete(function)
+	color.Green("%s function deleted", function.Name)
+
+	if errResponse != nil {
+		prepareErrorResponse(cmd, errResponse)
+	}
+
 }
 
 func functionGetALL(cmd *cobra.Command, args []string) {

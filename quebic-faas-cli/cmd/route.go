@@ -1,3 +1,17 @@
+//    Copyright 2018 Tharanga Nilupul Thennakoon
+//
+//    Licensed under the Apache License, Version 2.0 (the "License");
+//    you may not use this file except in compliance with the License.
+//    You may obtain a copy of the License at
+//
+//        http://www.apache.org/licenses/LICENSE-2.0
+//
+//    Unless required by applicable law or agreed to in writing, software
+//    distributed under the License is distributed on an "AS IS" BASIS,
+//    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//    See the License for the specific language governing permissions and
+//    limitations under the License.
+
 package cmd
 
 import (
@@ -12,7 +26,7 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
-var routeInputFile string
+var routeSpecFile string
 var routeName string
 
 func init() {
@@ -38,10 +52,10 @@ func setupRouteCmds() {
 func setupRouteFlags() {
 
 	//route-create
-	routeCreateCmd.PersistentFlags().StringVarP(&routeInputFile, "file", "f", "route.yml", "route input file")
+	routeCreateCmd.PersistentFlags().StringVarP(&routeSpecFile, "spec", "f", "route.yml", "route input file")
 
 	//route-update
-	routeUpdateCmd.PersistentFlags().StringVarP(&routeInputFile, "file", "f", "route.yml", "route input file")
+	routeUpdateCmd.PersistentFlags().StringVarP(&routeSpecFile, "spec", "f", "route.yml", "route input file")
 
 	//route-inspect
 	routeInspectCmd.PersistentFlags().StringVarP(&routeName, "name", "n", "", "route name")
@@ -87,7 +101,7 @@ var routeInspectCmd = &cobra.Command{
 func routeSave(cmd *cobra.Command, args []string, isAdd bool) {
 
 	route := &types.Resource{}
-	err := common.ParseYAMLToObject(routeInputFile, route)
+	err := common.ParseYAMLFileToObject(routeSpecFile, route)
 	if err != nil {
 		prepareError(cmd, err)
 	}
@@ -105,7 +119,7 @@ func routeSave(cmd *cobra.Command, args []string, isAdd bool) {
 		prepareErrorResponse(cmd, errResponse)
 	}
 
-	color.Green("route saved : %s", route.GetID())
+	color.Green("%s route saved", route.GetID())
 
 }
 

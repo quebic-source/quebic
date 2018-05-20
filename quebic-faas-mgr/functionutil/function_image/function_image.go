@@ -1,19 +1,18 @@
-/*
-Copyright 2018 Tharanga Nilupul Thennakoon
+//    Copyright 2018 Tharanga Nilupul Thennakoon
+//
+//    Licensed under the Apache License, Version 2.0 (the "License");
+//    you may not use this file except in compliance with the License.
+//    You may obtain a copy of the License at
+//
+//        http://www.apache.org/licenses/LICENSE-2.0
+//
+//    Unless required by applicable law or agreed to in writing, software
+//    distributed under the License is distributed on an "AS IS" BASIS,
+//    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//    See the License for the specific language governing permissions and
+//    limitations under the License.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-	http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-package dockerutil
+package function_image
 
 import (
 	"encoding/base64"
@@ -28,20 +27,21 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/client"
 	"golang.org/x/net/context"
+
+	quebicTypes "quebic-faas/types"
 )
 
-const defaultTag string = "1.0.0"
+//const defaultTag string = "1.0.0"
 const imageTagPrefix string = "quebic-faas-function-"
 
 //FunctionImageBuild function image build
 func FunctionImageBuild(
 	authConfig types.AuthConfig,
 	buildContextLocation string,
-	functionID string,
-	secretKey string,
+	function quebicTypes.Function,
 	publish bool) (string, error) {
 
-	image := getImage(authConfig, functionID)
+	image := GetImage(authConfig, function)
 
 	cli, err := client.NewEnvClient()
 	if err != nil {
@@ -56,7 +56,7 @@ func FunctionImageBuild(
 
 	//set accessKey into function container
 	buildArgs := make(map[string]*string)
-	buildArgs[common.EnvKeyAPIGateWayAccessKey] = &secretKey
+	buildArgs[common.EnvKeyAPIGateWayAccessKey] = &function.SecretKey
 
 	options := types.ImageBuildOptions{
 		Tags:      []string{image},
@@ -75,7 +75,7 @@ func FunctionImageBuild(
 	}
 
 	if publish {
-		err = functionImagePublish(authConfig, functionID)
+		err = functionImagePublish(authConfig, function)
 		if err != nil {
 			return "", err
 		}
@@ -86,14 +86,14 @@ func FunctionImageBuild(
 }
 
 //FunctionImagePublish function image publish
-func functionImagePublish(authConfig types.AuthConfig, functionID string) error {
+func functionImagePublish(authConfig types.AuthConfig, function quebicTypes.Function) error {
 
 	if authConfig.Username == "" {
 		log.Printf("docker auth configuration not found. not going to publish")
 		return nil
 	}
 
-	image := getImage(authConfig, functionID)
+	image := GetImage(authConfig, function)
 	authStr := getAuthStr(authConfig)
 
 	cli, err := client.NewEnvClient()
@@ -172,13 +172,17 @@ func FunctionContainerStart(authConfig types.AuthConfig, image string) error {
 
 }
 
-func getImage(authConfig types.AuthConfig, functionID string) string {
+//GetImage get docker image
+func GetImage(authConfig types.AuthConfig, function quebicTypes.Function) string {
+
+	functionID := function.Name
+	functionVersion := function.Version
 
 	if authConfig.Username == "" {
-		return imageTagPrefix + functionID + ":" + defaultTag
+		return imageTagPrefix + functionID + ":" + functionVersion
 	}
 
-	return authConfig.Username + "/" + imageTagPrefix + functionID + ":" + defaultTag
+	return authConfig.Username + "/" + imageTagPrefix + functionID + ":" + functionVersion
 
 }
 

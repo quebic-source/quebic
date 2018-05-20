@@ -1,18 +1,17 @@
-/*
-Copyright 2018 Tharanga Nilupul Thennakoon
+//    Copyright 2018 Tharanga Nilupul Thennakoon
+//
+//    Licensed under the Apache License, Version 2.0 (the "License");
+//    you may not use this file except in compliance with the License.
+//    You may obtain a copy of the License at
+//
+//        http://www.apache.org/licenses/LICENSE-2.0
+//
+//    Unless required by applicable law or agreed to in writing, software
+//    distributed under the License is distributed on an "AS IS" BASIS,
+//    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//    See the License for the specific language governing permissions and
+//    limitations under the License.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-	http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
 package httphandler
 
 import (
@@ -22,6 +21,7 @@ import (
 	"quebic-faas/common"
 	"quebic-faas/quebic-faas-mgr/dao"
 	"quebic-faas/types"
+	"sort"
 	"strings"
 
 	bolt "github.com/coreos/bbolt"
@@ -33,9 +33,20 @@ func (httphandler *Httphandler) ResourceHandler(router *mux.Router) {
 
 	db := httphandler.db
 	appConfig := httphandler.config
+	deployment := httphandler.deployment
 
 	router.HandleFunc("/routes", func(w http.ResponseWriter, r *http.Request) {
-		getAllResources(w, r, db, &types.Resource{})
+
+		qID := r.FormValue("id")
+		if qID == "" {
+			getAllResources(w, r, db, &types.Resource{})
+			return
+		}
+
+		resource := &types.Resource{}
+		resource.ID = qID
+		getByID(w, r, db, resource)
+
 	}).Methods("GET")
 
 	router.HandleFunc("/routes/{name}", func(w http.ResponseWriter, r *http.Request) {
@@ -93,7 +104,7 @@ func (httphandler *Httphandler) ResourceHandler(router *mux.Router) {
 
 		add(w, r, db, resource)
 
-		restartAPIGateway(db, appConfig)
+		restartAPIGateway(appConfig, deployment)
 
 	}).Methods("POST")
 
@@ -123,7 +134,7 @@ func (httphandler *Httphandler) ResourceHandler(router *mux.Router) {
 
 		update(w, r, db, resource)
 
-		restartAPIGateway(db, appConfig)
+		restartAPIGateway(appConfig, deployment)
 
 	}).Methods("PUT")
 
@@ -149,6 +160,9 @@ func getAllResources(w http.ResponseWriter, r *http.Request, db *bolt.DB, entity
 		var emptyStr [0]string
 		writeResponse(w, emptyStr, http.StatusOK)
 	} else {
+
+		doSort(r, resources)
+
 		writeResponse(w, resources, http.StatusOK)
 	}
 
@@ -267,4 +281,64 @@ func preProcessResource(db *bolt.DB, resource *types.Resource) error {
 
 func prepareResourceID(resource *types.Resource) {
 	resource.ID = resource.URL + common.ResourceJOIN + resource.RequestMethod
+}
+
+// By is the type of a "less" function that defines the ordering of its Planet arguments.
+type By func(r1, r2 *types.Resource) bool
+
+type routesSorter struct {
+	routes []types.Resource
+	by     func(r1, r2 *types.Resource) bool // Closure used in the Less method.
+}
+
+// Len is part of sort.Interface.
+func (s *routesSorter) Len() int {
+	return len(s.routes)
+}
+
+// Swap is part of sort.Interface.
+func (s *routesSorter) Swap(i, j int) {
+	s.routes[i], s.routes[j] = s.routes[j], s.routes[i]
+}
+
+// Less is part of sort.Interface. It is implemented by calling the "by" closure in the sorter.
+func (s *routesSorter) Less(i, j int) bool {
+	return s.by(&s.routes[i], &s.routes[j])
+}
+
+// Sort is a method on the function type, By, that sorts the argument slice according to the function.
+func (by By) Sort(routes []types.Resource) {
+	rs := &routesSorter{
+		routes: routes,
+		by:     by, // The Sort method's receiver is the function (closure) that defines the sort order.
+	}
+	sort.Sort(rs)
+}
+
+func doSort(r *http.Request, resources []types.Resource) {
+
+	const fieldID = "id"
+	const fieldModifiedDate = "modifiedDate"
+	const fieldURL = "url"
+
+	sortField := r.FormValue("sortBy")
+
+	var sort func(r1, r2 *types.Resource) bool
+
+	if sortField == fieldModifiedDate {
+		sort = func(r1, r2 *types.Resource) bool {
+			return r1.ModifiedAt < r2.ModifiedAt
+		}
+	} else if sortField == fieldURL {
+		sort = func(r1, r2 *types.Resource) bool {
+			return r1.URL < r2.URL
+		}
+	} else {
+		sort = func(r1, r2 *types.Resource) bool {
+			return r1.ID < r2.ID
+		}
+	}
+
+	By(sort).Sort(resources)
+
 }

@@ -1,21 +1,21 @@
-/*
-Copyright 2018 Tharanga Nilupul Thennakoon
+//    Copyright 2018 Tharanga Nilupul Thennakoon
+//
+//    Licensed under the Apache License, Version 2.0 (the "License");
+//    you may not use this file except in compliance with the License.
+//    You may obtain a copy of the License at
+//
+//        http://www.apache.org/licenses/LICENSE-2.0
+//
+//    Unless required by applicable law or agreed to in writing, software
+//    distributed under the License is distributed on an "AS IS" BASIS,
+//    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//    See the License for the specific language governing permissions and
+//    limitations under the License.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-	http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
 package types
 
 import (
+	"quebic-faas/common"
 	"reflect"
 )
 
@@ -24,13 +24,16 @@ type Entity interface {
 	GetReflectObject() reflect.Value
 	GetID() string
 	SetID(id string)
+	SetModifiedAt()
 }
 
 //User model ######################################
 type User struct {
-	Username  string `json:"username"`
-	Firstname string `json:"firstname"`
-	Password  string `json:"password"`
+	Username   string `json:"username"`
+	Firstname  string `json:"firstname"`
+	Password   string `json:"password"`
+	CreatedAt  string `json:"createdAt" yaml:"createdAt"`   //created time
+	ModifiedAt string `json:"modifiedAt" yaml:"modifiedAt"` //modified time
 }
 
 //GetReflectObject get Reflect Object
@@ -48,12 +51,19 @@ func (o *User) SetID(id string) {
 	o.Username = id
 }
 
+//SetModifiedAt set modified date
+func (o *User) SetModifiedAt() {
+	o.ModifiedAt = common.CurrentTime()
+}
+
 //Event model ######################################
 //ID => <prefix>.Group.Name
 type Event struct {
-	ID    string `json:"id"`
-	Group string `json:"group"`
-	Name  string `json:"name"`
+	ID         string `json:"id"`
+	Group      string `json:"group"`
+	Name       string `json:"name"`
+	CreatedAt  string `json:"createdAt" yaml:"createdAt"`   //created time
+	ModifiedAt string `json:"modifiedAt" yaml:"modifiedAt"` //modified time
 }
 
 //GetReflectObject get Reflect Object
@@ -71,6 +81,11 @@ func (o *Event) SetID(id string) {
 	o.ID = id
 }
 
+//SetModifiedAt set modified date
+func (o *Event) SetModifiedAt() {
+	o.ModifiedAt = common.CurrentTime()
+}
+
 //Resource model ######################################
 //ID => URL:RequestMethod
 type Resource struct {
@@ -85,6 +100,8 @@ type Resource struct {
 	RequestMapping        []RequestMappingTemplate `json:"requestMapping" yaml:"requestMapping"`
 	HeaderMapping         []HeaderMappingTemplate  `json:"headerMapping" yaml:"headerMapping"`
 	HeadersToPass         []string                 `json:"headersToPass" yaml:"headersToPass"` //header list pass to endpoint
+	CreatedAt             string                   `json:"createdAt" yaml:"createdAt"`         //created time
+	ModifiedAt            string                   `json:"modifiedAt" yaml:"modifiedAt"`       //modified time
 }
 
 //GetReflectObject get Reflect Object
@@ -108,8 +125,13 @@ func (o *Resource) SetDefault() {
 	o.SuccessResponseStatus = 200
 }
 
+//SetModifiedAt set modified date
+func (o *Resource) SetModifiedAt() {
+	o.ModifiedAt = common.CurrentTime()
+}
+
 //Function model ######################################
-// ArtifactStoredLocation : artifact stored file location of the user machine
+// Source : code / artifact stored file location
 // FunctionPath :
 // 		Runtime java : class path of handler
 //		Runtime node : myHandler
@@ -119,17 +141,22 @@ func (o *Resource) SetDefault() {
 //      Runtime node package : user defined
 // Route : function invoker route id. nor required
 type Function struct {
-	Name                   string    `json:"name" yaml:"name"`
-	DockerImageID          string    `json:"dockerImageID" yaml:"dockerImageID"`
-	ArtifactStoredLocation string    `json:"artifactStoredLocation" yaml:"artifactStoredLocation"`
-	HandlerPath            string    `json:"handlerPath" yaml:"handlerPath"`
-	HandlerFile            string    `json:"handlerFile" yaml:"handlerFile"`
-	Runtime                string    `json:"runtime" yaml:"runtime"`
-	Events                 []string  `json:"events" yaml:"events"`
-	Replicas               int       `json:"replicas" yaml:"replicas"`
-	SecretKey              string    `json:"secretKey"`
-	Route                  string    `json:"route"`
-	Log                    EntityLog `json:"log"`
+	Name          string    `json:"name" yaml:"name"`
+	Version       string    `json:"version" yaml:"version"` //current version
+	Versions      []string  `json:"versions" yaml:"versions"`
+	DockerImageID string    `json:"dockerImageID" yaml:"dockerImageID"`
+	Source        string    `json:"source" yaml:"source"`
+	Handler       string    `json:"handler" yaml:"handler"`
+	HandlerPath   string    `json:"handlerPath" yaml:"handlerPath"`
+	HandlerFile   string    `json:"handlerFile" yaml:"handlerFile"`
+	Runtime       string    `json:"runtime" yaml:"runtime"`
+	Events        []string  `json:"events" yaml:"events"`
+	Replicas      int       `json:"replicas" yaml:"replicas"`
+	SecretKey     string    `json:"secretKey"`
+	Route         string    `json:"route"`
+	Log           EntityLog `json:"log"`
+	CreatedAt     string    `json:"createdAt" yaml:"createdAt"`   //created time
+	ModifiedAt    string    `json:"modifiedAt" yaml:"modifiedAt"` //modified time
 }
 
 //GetReflectObject get Reflect Object
@@ -147,9 +174,9 @@ func (o *Function) SetID(id string) {
 	o.Name = id
 }
 
-//FunctionContainer model ######################################
-type FunctionContainer struct {
-	ID string `json:"id"`
+//SetModifiedAt set modified date
+func (o *Function) SetModifiedAt() {
+	o.ModifiedAt = common.CurrentTime()
 }
 
 //ManagerComponent components handle by manager ######################################
@@ -161,6 +188,8 @@ type ManagerComponent struct {
 	AccessKey         string     `json:"accessKey"`
 	Deployment        Deployment `json:"deployment"`
 	Log               EntityLog  `json:"log"`
+	CreatedAt         string     `json:"createdAt" yaml:"createdAt"`   //created time
+	ModifiedAt        string     `json:"modifiedAt" yaml:"modifiedAt"` //modified time
 }
 
 //GetReflectObject get Reflect Object
@@ -176,6 +205,11 @@ func (o *ManagerComponent) GetID() string {
 //SetID get ID
 func (o *ManagerComponent) SetID(id string) {
 	o.ID = id
+}
+
+//SetModifiedAt set modified date
+func (o *ManagerComponent) SetModifiedAt() {
+	o.ModifiedAt = common.CurrentTime()
 }
 
 //Deployment deployment details
@@ -194,13 +228,6 @@ type RequestMappingTemplate struct {
 type HeaderMappingTemplate struct {
 	EventAttribute  string `json:"eventAttribute" yaml:"eventAttribute"`
 	HeaderAttribute string `json:"headerAttribute" yaml:"headerAttribute"`
-}
-
-//Machine model ######################################
-type Machine struct {
-	Address string `json:"address"`
-	Host    string `json:"host"`
-	Port    string `json:"port"`
 }
 
 //EntityLog log entity is used to describe states of each entities ######################################
@@ -239,6 +266,10 @@ func (o *RequestTracker) GetID() string {
 //SetID get ID
 func (o *RequestTracker) SetID(id string) {
 	o.RequestID = id
+}
+
+//SetModifiedAt set modified date
+func (o *RequestTracker) SetModifiedAt() {
 }
 
 //RequestTrackerResponse requestTrackerResponse

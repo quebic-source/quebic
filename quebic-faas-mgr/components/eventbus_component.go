@@ -1,18 +1,17 @@
-/*
-Copyright 2018 Tharanga Nilupul Thennakoon
+//    Copyright 2018 Tharanga Nilupul Thennakoon
+//
+//    Licensed under the Apache License, Version 2.0 (the "License");
+//    you may not use this file except in compliance with the License.
+//    You may obtain a copy of the License at
+//
+//        http://www.apache.org/licenses/LICENSE-2.0
+//
+//    Unless required by applicable law or agreed to in writing, software
+//    distributed under the License is distributed on an "AS IS" BASIS,
+//    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//    See the License for the specific language governing permissions and
+//    limitations under the License.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-	http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
 package components
 
 import (
@@ -20,16 +19,13 @@ import (
 	"log"
 	"quebic-faas/common"
 	"quebic-faas/quebic-faas-mgr/config"
-	"time"
-
-	bolt "github.com/coreos/bbolt"
-	"github.com/docker/docker/api/types/swarm"
+	dep "quebic-faas/quebic-faas-mgr/deployment"
 )
 
 const eventbusReplicas = 1
 
 //EventbusSetup eventbus setup
-func EventbusSetup(db *bolt.DB, appConfig config.AppConfig) error {
+func EventbusSetup(appConfig *config.AppConfig, deployment dep.Deployment) error {
 
 	componentID := common.ComponentEventBus
 	log.Printf("%s-component : starting", componentID)
@@ -40,28 +36,26 @@ func EventbusSetup(db *bolt.DB, appConfig config.AppConfig) error {
 	eventbusAMQPPort := eventBusConfig.AMQPPort
 	eventbusManagementPort := eventBusConfig.ManagementPort
 
-	portConfig := getEventbusPortConfig(eventbusAMQPPort, eventbusManagementPort)
+	portConfig := getEventbusPortConfigs(eventbusAMQPPort, eventbusManagementPort)
 
 	envkeys := make(map[string]string)
 
-	common.DockerServiceStop(componentID)
-
-	//wait until current running eventbus stop
-	err := WaitForEventbusStop(eventBusConfig, time.Minute*5)
-	if err != nil {
-		return err
+	deploymentSpec := dep.Spec{
+		Name:        componentID,
+		Dockerimage: common.EventbusImage,
+		PortConfigs: portConfig,
+		Envkeys:     envkeys,
+		Replicas:    eventbusReplicas,
 	}
 
-	_, err = common.DockerServiceCreate(
-		common.DockerNetworkID,
-		common.ComponentEventBus,
-		common.EventbusImage,
-		portConfig,
-		eventbusReplicas,
-		envkeys)
+	details, err := deployment.CreateOrUpdate(deploymentSpec)
 	if err != nil {
 		return fmt.Errorf("%s-component-setup-failed : %v", componentID, err)
 	}
+
+	host := details.Host
+	appConfig.EventBusConfig.AMQPHost = host
+	appConfig.EventBusConfig.ManagementHost = host
 
 	log.Printf("%s-component : started", componentID)
 
@@ -69,25 +63,27 @@ func EventbusSetup(db *bolt.DB, appConfig config.AppConfig) error {
 
 }
 
-func getEventbusPortConfig(amqpPortPort int, managementPort int) []swarm.PortConfig {
+func getEventbusPortConfigs(amqpPortPort int, managementPort int) []dep.PortConfig {
 
-	targetAMQPPort := uint32(common.RabbitmqAMQPPort)
-	targetManagementPort := uint32(common.RabbitmqManagementPort)
+	publishAMQPPort := dep.Port(amqpPortPort)
+	targetAMQPPort := dep.Port(common.RabbitmqAMQPPort)
 
-	publishAMQPPort := uint32(amqpPortPort)
-	publishManagementPort := uint32(managementPort)
+	publishManagementPort := dep.Port(managementPort)
+	targetManagementPort := dep.Port(common.RabbitmqManagementPort)
 
-	portConfig := []swarm.PortConfig{
-		swarm.PortConfig{
-			PublishedPort: publishAMQPPort,
-			TargetPort:    targetAMQPPort,
+	portConfigs := []dep.PortConfig{
+		dep.PortConfig{
+			Name:       "amqp",
+			Port:       publishAMQPPort,
+			TargetPort: targetAMQPPort,
 		},
-		swarm.PortConfig{
-			PublishedPort: publishManagementPort,
-			TargetPort:    targetManagementPort,
+		dep.PortConfig{
+			Name:       "management",
+			Port:       publishManagementPort,
+			TargetPort: targetManagementPort,
 		},
 	}
 
-	return portConfig
+	return portConfigs
 
 }

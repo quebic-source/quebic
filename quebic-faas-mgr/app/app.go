@@ -1,18 +1,17 @@
-/*
-Copyright 2018 Tharanga Nilupul Thennakoon
+//    Copyright 2018 Tharanga Nilupul Thennakoon
+//
+//    Licensed under the Apache License, Version 2.0 (the "License");
+//    you may not use this file except in compliance with the License.
+//    You may obtain a copy of the License at
+//
+//        http://www.apache.org/licenses/LICENSE-2.0
+//
+//    Unless required by applicable law or agreed to in writing, software
+//    distributed under the License is distributed on an "AS IS" BASIS,
+//    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//    See the License for the specific language governing permissions and
+//    limitations under the License.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-	http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
 package app
 
 import (
@@ -25,15 +24,18 @@ import (
 	"quebic-faas/config"
 	_messenger "quebic-faas/messenger"
 	"quebic-faas/quebic-faas-mgr/components"
-	"quebic-faas/quebic-faas-mgr/components/kube_components"
 	mgrconfig "quebic-faas/quebic-faas-mgr/config"
 	dao "quebic-faas/quebic-faas-mgr/dao"
 	"quebic-faas/quebic-faas-mgr/db"
+	dep "quebic-faas/quebic-faas-mgr/deployment"
+	"quebic-faas/quebic-faas-mgr/deployment/docker_deployment"
+	"quebic-faas/quebic-faas-mgr/deployment/kube_deployment"
 	"quebic-faas/quebic-faas-mgr/httphandler"
 	"quebic-faas/quebic-faas-mgr/logger"
 	"quebic-faas/types"
 	"time"
 
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	yaml "gopkg.in/yaml.v2"
 
@@ -47,6 +49,7 @@ type App struct {
 	messenger  _messenger.Messenger
 	router     *mux.Router
 	loggerUtil logger.Logger
+	deployment dep.Deployment
 }
 
 //Start init app
@@ -64,6 +67,9 @@ func (app *App) Start() {
 
 	//setup root admin user to loging manager
 	app.setupAdminUser()
+
+	//setup deployment
+	app.setupDeployment()
 
 	//setup manager components
 	app.setupManagerComponents()
@@ -146,35 +152,48 @@ func (app *App) setupAdminUser() {
 
 }
 
-func (app *App) setupManagerComponents() {
+func (app *App) setupDeployment() {
 
 	deployment := app.config.Deployment
 
 	if deployment == mgrconfig.Deployment_Docker {
 
-		//docker-network
-		components.NetworkSetup(app.db, app.config)
-
-		//eventbus
-		err := components.EventbusSetup(app.db, app.config)
-		if err != nil {
-			log.Fatalf("eventbus setup failed : %v", err)
+		dockerDeployment := docker_deployment.Deployment{
+			Config: docker_deployment.Config{
+				NetworkName: common.DockerNetworkID,
+			},
 		}
+
+		app.deployment = dockerDeployment
+
+	} else if deployment == mgrconfig.Deployment_Kubernetes {
+
+		kubeDeployment := kube_deployment.Deployment{
+			Config: kube_deployment.Config{
+				ConfigPath: app.config.KubernetesConfig.ConfigPath,
+			},
+		}
+
+		app.deployment = kubeDeployment
 
 	} else {
+		log.Fatalf("deployment setup failed : %s not support", deployment)
+	}
 
-		//kube namespace
-		err := common.KubeNameSpaceCreate(app.config.KubernetesConfig)
-		if err != nil {
-			log.Fatalf("%v", err)
-		}
+	err := app.deployment.Init()
+	if err != nil {
+		log.Fatalf("deployment init failed : %v", err)
+	}
 
-		//eventbus
-		err = kube_components.EventbusSetup(app.db, &app.config)
-		if err != nil {
-			log.Fatalf("eventbus setup failed : %v", err)
-		}
+}
 
+func (app *App) setupManagerComponents() {
+
+	deployment := app.deployment
+
+	err := components.EventbusSetup(&app.config, deployment)
+	if err != nil {
+		log.Fatalf("eventbus setup failed : %v", err)
 	}
 
 	//setup messenger
@@ -187,20 +206,9 @@ func (app *App) setupManagerComponents() {
 	app.setupLogger()
 
 	//apigateway
-	if deployment == mgrconfig.Deployment_Docker {
-
-		err := components.ApigatewaySetup(app.db, app.config)
-		if err != nil {
-			log.Fatalf("apigateway setup failed : %v", err)
-		}
-
-	} else {
-
-		err := kube_components.ApigatewaySetup(app.db, &app.config)
-		if err != nil {
-			log.Fatalf("apigateway setup failed : %v", err)
-		}
-
+	err = components.ApigatewaySetup(&app.config, deployment)
+	if err != nil {
+		log.Fatalf("apigateway setup failed : %v", err)
 	}
 
 }
@@ -312,13 +320,15 @@ func (app *App) setUpHTTPHandlers() {
 	db := app.db
 	messenger := app.messenger
 	loggerUtil := app.loggerUtil
+	deployment := app.deployment
 
 	httphandler.SetUpHTTPHandlers(
 		app.config,
 		router,
 		db,
 		messenger,
-		loggerUtil)
+		loggerUtil,
+		deployment)
 
 	apigatewayAddress := app.config.APIGatewayConfig.ServerConfig.Host + ":" + common.IntToStr(app.config.APIGatewayConfig.ServerConfig.Port)
 	address := app.config.ServerConfig.Host + ":" + common.IntToStr(app.config.ServerConfig.Port)
@@ -326,7 +336,9 @@ func (app *App) setUpHTTPHandlers() {
 	log.Printf("quebic-faas-apigateway running : %s\n", apigatewayAddress)
 	log.Printf("quebic-faas-manager running : %s\n", address)
 
-	err := http.ListenAndServe(address, router)
+	allowedOrigins := handlers.AllowedOrigins([]string{"*"})
+
+	err := http.ListenAndServe(address, handlers.CORS(allowedOrigins)(router))
 	if err != nil {
 		log.Fatalf("quebic-faas-manager failed. error : %v", err)
 	}

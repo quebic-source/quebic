@@ -1,6 +1,16 @@
 package service
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"io/ioutil"
+	"mime/multipart"
+	"net/http"
+	"os"
+	"path/filepath"
+	"quebic-faas/common"
 	"quebic-faas/types"
 )
 
@@ -20,9 +30,17 @@ func (mgrService *MgrService) FunctionUpdate(functionDTO *types.FunctionDTO) *ty
 
 }
 
-func (mgrService *MgrService) functionSave(functionDTO *types.FunctionDTO, requestMethod string) *types.ErrorResponse {
+//FunctionDeploy deploy function
+func (mgrService *MgrService) FunctionDeploy(function *types.Function) *types.ErrorResponse {
 
-	response, err := mgrService.makeRequest(api_function, requestMethod, functionDTO, nil)
+	return mgrService.functionDeploy(function)
+
+}
+
+//FunctionDelete function delete
+func (mgrService *MgrService) FunctionDelete(function *types.Function) *types.ErrorResponse {
+
+	response, err := mgrService.DELETE(api_function, function, nil)
 	if err != nil {
 		return err
 	}
@@ -31,7 +49,24 @@ func (mgrService *MgrService) functionSave(functionDTO *types.FunctionDTO, reque
 		return processErrorResponse(response)
 	}
 
-	parseResponseData(response.Data, functionDTO)
+	parseResponseData(response.Data, function)
+
+	return nil
+
+}
+
+func (mgrService *MgrService) functionDeploy(function *types.Function) *types.ErrorResponse {
+
+	response, err := mgrService.makeRequest(api_function+"/deploy", request_post, function, nil)
+	if err != nil {
+		return err
+	}
+
+	if response.StatusCode >= 300 {
+		return processErrorResponse(response)
+	}
+
+	parseResponseData(response.Data, function)
 
 	return nil
 }
@@ -73,4 +108,106 @@ func (mgrService *MgrService) FunctionsGetByName(name string) (*types.Function, 
 
 	return function, nil
 
+}
+
+func (mgrService *MgrService) functionSave(functionDTO *types.FunctionDTO, requestMethod string) *types.ErrorResponse {
+
+	response, err := mgrService.makeMultipartFormRequest(functionDTO, requestMethod, nil)
+	if err != nil {
+		return err
+	}
+
+	if response.StatusCode >= 300 {
+		return processErrorResponse(response)
+	}
+
+	parseResponseData(response.Data, functionDTO)
+
+	return nil
+}
+
+func (mgrService *MgrService) makeMultipartFormRequest(functionDTO *types.FunctionDTO, method string, header map[string]string) (*ResponseMessage, *types.ErrorResponse) {
+
+	url := mgrService.prepareURL(api_function)
+
+	requestBody := &bytes.Buffer{}
+	writer := multipart.NewWriter(requestBody)
+
+	//Spec data
+	specDataProcess(writer, functionDTO)
+
+	//Artifact file
+	err := artifactFileProcess(writer, functionDTO.Function.Source)
+	if err != nil {
+		return nil, makeErrorToErrorResponse(err)
+	}
+
+	err = writer.Close()
+	if err != nil {
+		return nil, makeErrorToErrorResponse(err)
+	}
+
+	req, err := http.NewRequest(method, url, requestBody)
+	if err != nil {
+		return nil, makeErrorToErrorResponse(err)
+	}
+
+	req.Header.Add("Content-Type", writer.FormDataContentType())
+	req.Header.Add("Authorization", mgrService.Auth.AuthToken)
+
+	if header != nil {
+		for k, v := range header {
+			req.Header.Add(k, v)
+		}
+	}
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, makeErrorToErrorResponse(err)
+	}
+	defer res.Body.Close()
+
+	responseBody, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return nil, makeErrorToErrorResponse(err)
+	}
+
+	return &ResponseMessage{StatusCode: res.StatusCode, Data: responseBody}, nil
+
+}
+
+func specDataProcess(writer *multipart.Writer, functionDTO *types.FunctionDTO) error {
+
+	field := common.FunctionSaveField_SPEC
+
+	functionDTOJson, err := json.Marshal(functionDTO)
+	if err != nil {
+		return err
+	}
+
+	return writer.WriteField(field, string(functionDTOJson))
+}
+
+func artifactFileProcess(writer *multipart.Writer, filePath string) error {
+
+	field := common.FunctionSaveField_SOURCE
+
+	if filePath == "" {
+		return fmt.Errorf("%s file path cannot be empty", field)
+	}
+
+	artifactFile, err := os.Open(filePath)
+	if err != nil {
+		return err
+	}
+	defer artifactFile.Close()
+
+	part, err := writer.CreateFormFile(field, filepath.Base(filePath))
+	if err != nil {
+		return err
+	}
+
+	_, err = io.Copy(part, artifactFile)
+
+	return err
 }

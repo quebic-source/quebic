@@ -1,19 +1,18 @@
-/*
-Copyright 2018 Tharanga Nilupul Thennakoon
+//    Copyright 2018 Tharanga Nilupul Thennakoon
+//
+//    Licensed under the Apache License, Version 2.0 (the "License");
+//    you may not use this file except in compliance with the License.
+//    You may obtain a copy of the License at
+//
+//        http://www.apache.org/licenses/LICENSE-2.0
+//
+//    Unless required by applicable law or agreed to in writing, software
+//    distributed under the License is distributed on an "AS IS" BASIS,
+//    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//    See the License for the specific language governing permissions and
+//    limitations under the License.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-	http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-package functioncreate
+package function_create
 
 import (
 	"archive/tar"
@@ -22,9 +21,11 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"mime/multipart"
 	"os"
 	"path/filepath"
 	"quebic-faas/common"
+	quebicFaasTypes "quebic-faas/types"
 )
 
 const functionsStoredDir string = ".quebic-faas-functions"
@@ -36,9 +37,10 @@ const buildContextHandlerTar string = "function_handler.tar"
 //DockerFunctionDIR dir which function is locted
 const DockerFunctionDIR string = "app"
 
+//CreateFunction create function
 func CreateFunction(
 	functionID string,
-	functionArtifactPath string,
+	functionSource quebicFaasTypes.FunctionSourceFile,
 	runtime common.Runtime) (string, error) {
 
 	err := createFunctionDir(functionID)
@@ -51,7 +53,7 @@ func CreateFunction(
 		return "", err
 	}
 
-	err = copyFunctionIntoBuildContextLocation(functionID, functionArtifactPath, runtime)
+	err = copyFunctionIntoBuildContextLocation(functionID, functionSource, runtime)
 	if err != nil {
 		return "", err
 	}
@@ -99,53 +101,45 @@ func createFunctionDockerFile(
 
 func copyFunctionIntoBuildContextLocation(
 	functionID string,
-	functionArtifactPath string,
+	functionSource quebicFaasTypes.FunctionSourceFile,
 	runtime common.Runtime) error {
+
+	functionArtifactFile := functionSource.File
+	functionArtifactFilename := functionSource.FileHeader.Filename
 
 	var targetFunctionArtifactPath string
 	if runtime == common.RuntimeJava {
 
 		log.Printf("function-create runtime : %s", common.RuntimeJava)
 
-		//TODO remove this log later
-		log.Printf("function-create functionArtifactPath : %s", functionArtifactPath)
-		log.Printf("function-create targetFunctionArtifactPath : %s", targetFunctionArtifactPath)
-
 		targetFunctionArtifactPath = getBuildContextJar(functionID)
-		copyArtifactSourceToTarget(functionArtifactPath, targetFunctionArtifactPath)
+		copyArtifactSourceToTarget(functionArtifactFile, targetFunctionArtifactPath)
 
 	} else if runtime == common.RuntimeNodeJS {
 
+		log.Printf("function-create runtime : %s package", common.RuntimeNodeJS)
+
 		targetFunctionArtifactPath = getBuildContextHandlerTar(functionID)
 
-		//if provided artifact path is not a tar/tar.gz. put handler.js into .tar
-		if filepath.Ext(functionArtifactPath) != ".tar" && filepath.Ext(functionArtifactPath) != ".gz" {
+		//nodejs package
+		if filepath.Ext(functionArtifactFilename) == ".tar" || filepath.Ext(functionArtifactFilename) == ".gz" {
 
-			log.Printf("function-create runtime : %s", common.RuntimeNodeJS)
+			copyArtifactSourceToTarget(functionArtifactFile, targetFunctionArtifactPath)
 
+		} else {
+
+			//copy js file to function storing location
+			//then create nodejs package .tar
 			targetArtifactPathJS := getBuildContextJS(functionID)
 
-			//TODO remove this log later
-			log.Printf("function-create functionArtifactPath : %s", functionArtifactPath)
-			log.Printf("function-create targetArtifactPathJS : %s", targetArtifactPathJS)
-			log.Printf("function-create targetFunctionArtifactPath : %s", targetFunctionArtifactPath)
-
 			//copy original js into function dir as handler.js
-			copyArtifactSourceToTarget(functionArtifactPath, targetArtifactPathJS)
+			copyArtifactSourceToTarget(functionArtifactFile, targetArtifactPathJS)
 
 			err := createHandlerTar(targetArtifactPathJS, targetFunctionArtifactPath)
 			if err != nil {
 				return fmt.Errorf("unable to create handler tar %v", err)
 			}
-		} else {
 
-			log.Printf("function-create runtime : %s package", common.RuntimeNodeJS)
-
-			//TODO remove this log later
-			log.Printf("function-create functionArtifactPath : %s", functionArtifactPath)
-			log.Printf("function-create targetFunctionArtifactPath : %s", targetFunctionArtifactPath)
-
-			copyArtifactSourceToTarget(functionArtifactPath, targetFunctionArtifactPath)
 		}
 
 	} else {
@@ -157,13 +151,10 @@ func copyFunctionIntoBuildContextLocation(
 }
 
 func copyArtifactSourceToTarget(
-	functionArtifactPath string,
+	functionArtifact multipart.File,
 	targetFunctionArtifactPath string) error {
 
-	from, err := os.Open(functionArtifactPath)
-	if err != nil {
-		return fmt.Errorf("unable to found functionArtifactPath %[1]s", err)
-	}
+	from := functionArtifact
 	defer from.Close()
 
 	to, err := os.OpenFile(targetFunctionArtifactPath, os.O_RDWR|os.O_CREATE, 0777)

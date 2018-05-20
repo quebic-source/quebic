@@ -51,8 +51,8 @@ func (mgrService *MgrService) makeRequest(path string, method string, payload in
 		return nil, makeErrorToErrorResponse(err)
 	}
 
-	req.Header.Add("content-type", "application/json")
-	req.Header.Add("authorization", mgrService.Auth.AuthToken)
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Authorization", mgrService.Auth.AuthToken)
 
 	if header != nil {
 		for k, v := range header {

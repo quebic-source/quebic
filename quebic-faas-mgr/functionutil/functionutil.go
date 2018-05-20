@@ -1,18 +1,17 @@
-/*
-Copyright 2018 Tharanga Nilupul Thennakoon
+//    Copyright 2018 Tharanga Nilupul Thennakoon
+//
+//    Licensed under the Apache License, Version 2.0 (the "License");
+//    you may not use this file except in compliance with the License.
+//    You may obtain a copy of the License at
+//
+//        http://www.apache.org/licenses/LICENSE-2.0
+//
+//    Unless required by applicable law or agreed to in writing, software
+//    distributed under the License is distributed on an "AS IS" BASIS,
+//    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//    See the License for the specific language governing permissions and
+//    limitations under the License.
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-	http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
 package functionutil
 
 import (
@@ -22,13 +21,12 @@ import (
 	"quebic-faas/common"
 	"quebic-faas/messenger"
 	mgrconfig "quebic-faas/quebic-faas-mgr/config"
-	"quebic-faas/quebic-faas-mgr/functionutil/dockerutil"
-	"quebic-faas/quebic-faas-mgr/functionutil/functioncreate"
-
+	dep "quebic-faas/quebic-faas-mgr/deployment"
+	"quebic-faas/quebic-faas-mgr/functionutil/function_create"
+	"quebic-faas/quebic-faas-mgr/functionutil/function_image"
 	quebicFaasTypes "quebic-faas/types"
 
 	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/swarm"
 )
 
 const functionServicePrefix string = "quebic-faas-function-"
@@ -36,32 +34,28 @@ const functionServicePrefix string = "quebic-faas-function-"
 //FunctionCreate create function
 func FunctionCreate(
 	authConfig types.AuthConfig,
-	function *quebicFaasTypes.Function,
-	options quebicFaasTypes.FunctionCreateOptions) (string, error) {
+	functionDTO quebicFaasTypes.FunctionDTO) (string, error) {
 
-	//validate runtime
-	if !common.RuntimeValidate(common.Runtime(function.Runtime)) {
-		return "", fmt.Errorf("runtime not match")
-	}
+	function := functionDTO.Function
+	options := functionDTO.Options
 
-	buildContextLocation, err := functioncreate.CreateFunction(
+	buildContextLocation, err := function_create.CreateFunction(
 		function.Name,
-		function.ArtifactStoredLocation,
+		functionDTO.SourceFile,
 		common.Runtime(function.Runtime))
 
 	if err != nil {
 		return "", err
 	}
 
-	imageID, err := dockerutil.FunctionImageBuild(
+	imageID, err := function_image.FunctionImageBuild(
 		authConfig,
 		buildContextLocation,
-		function.Name,
-		function.SecretKey,
+		function,
 		options.Publish)
 
 	//remove function dir
-	os.RemoveAll(functioncreate.GetFunctionDir(function.GetID()))
+	os.RemoveAll(function_create.GetFunctionDir(function.GetID()))
 
 	return imageID, err
 
@@ -70,6 +64,7 @@ func FunctionCreate(
 //FunctionDeploy create-or-update function
 func FunctionDeploy(
 	appConfig mgrconfig.AppConfig,
+	deployment dep.Deployment,
 	function *quebicFaasTypes.Function) (string, error) {
 
 	//validate runtime
@@ -84,41 +79,30 @@ func FunctionDeploy(
 	//set accesskey
 	envkeys := prepareEnvKeys(appConfig, function)
 
-	if appConfig.Deployment == mgrconfig.Deployment_Docker {
+	portConfigs := []dep.PortConfig{}
 
-		_, err := common.DockerServiceReStart(
-			common.DockerNetworkID,
-			functionService,
-			functionImage,
-			[]swarm.PortConfig{},
-			functionReplicas,
-			envkeys,
-		)
-		if err != nil {
-			return "", err
-		}
+	if deployment.DeploymentType() == mgrconfig.Deployment_Kubernetes {
 
-	} else {
-
-		spec := common.KubeServiceCreateSpec{
-			AppName:     functionService,
-			Dockerimage: functionImage,
-			Envkeys:     envkeys,
-			PortConfigs: []common.PortConfig{
-				common.PortConfig{
-					Name:       "http",
-					Port:       80,
-					TargetPort: 80,
-				},
+		portConfigs = []dep.PortConfig{
+			dep.PortConfig{
+				Name:       "http",
+				Port:       80,
+				TargetPort: 80,
 			},
-			Replicas: functionReplicas,
 		}
+	}
 
-		_, err := common.KubeDeploy(appConfig.KubernetesConfig, spec)
-		if err != nil {
-			return "", err
-		}
+	deploymentSpec := dep.Spec{
+		Name:        functionService,
+		Dockerimage: functionImage,
+		PortConfigs: portConfigs,
+		Envkeys:     envkeys,
+		Replicas:    dep.Replicas(functionReplicas),
+	}
 
+	_, err := deployment.CreateOrUpdate(deploymentSpec)
+	if err != nil {
+		return "", err
 	}
 
 	log.Printf("%s : deployed", functionService)
@@ -130,22 +114,14 @@ func FunctionDeploy(
 //StopFunction stop function
 func StopFunction(
 	appConfig mgrconfig.AppConfig,
+	deployment dep.Deployment,
 	function *quebicFaasTypes.Function) error {
 
 	functionService := GetServiceID(function.GetID())
 
-	if appConfig.Deployment == mgrconfig.Deployment_Docker {
-
-		err := common.DockerServiceStop(functionService)
-		if err != nil {
-			return err
-		}
-
-	} else {
-		err := common.KubeServiceDeleteByAppName(appConfig.KubernetesConfig, functionService)
-		if err != nil {
-			return err
-		}
+	err := deployment.Delete(functionService)
+	if err != nil {
+		return err
 	}
 
 	log.Printf("%s : stopped", functionService)
