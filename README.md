@@ -1,6 +1,6 @@
 # Quebic - FaaS Framework
 
-Quebic is a framework for writing serverless functions to run on Kubernetes. You can write your functions in any language. Currently quebic supports only for Java and NodeJS. [Example Project](https://github.com/quebic-source/quebic-sample-project)
+Quebic is a framework for writing serverless functions to run on Kubernetes. You can write your functions in any language. Currently Quebic supports only for Java and NodeJS. [Example Project](https://github.com/quebic-source/quebic-sample-project)
 
 ![quebic](https://github.com/quebic-source/quebic/blob/master/docs/quebic.png)
 
@@ -8,17 +8,17 @@ Quebic is a framework for writing serverless functions to run on Kubernetes. You
 * [Getting Started](#getting-started)
 * [Functions](#functions)
 * [Routing](#routing)
-* [Asynchronous invocation from Apigateway](#async)
+* [Asynchronous invocation from API Gateway](#async)
 * [Logs](#logs)
 * [Configurations](#configurations)
 * [Example Project](https://github.com/quebic-source/quebic-sample-project)
 * [Consultants](#consultants)
-* [Releses](https://github.com/quebic-source/quebic/releases)
+* [Releases](https://github.com/quebic-source/quebic/releases)
 
 ## <a name="getting-started"></a>Getting Started
 
 #### Install Docker
- * If you have already setup docker on your envirnment ,skip this step.
+ * If you have already setup docker on your environment ,skip this step.
  * [Install Docker](https://docs.docker.com/install/)
 
 #### Getting Binaries
@@ -28,7 +28,7 @@ Quebic is a framework for writing serverless functions to run on Kubernetes. You
  * After extract, you can see quebic-mgr and quebic cli inside that dir. 
  
 ###### For Windows Users
- * [Install golang into your envirnment](https://golang.org/doc/install). 
+ * [Install golang into your environment](https://golang.org/doc/install). 
  * Get [govendor](https://github.com/kardianos/govendor) tool. 
  * Run **govendor fetch**. This will download all the required dependencies for quebic.
  * Run for build quebic-mgr **go install quebic-faas/quebic-faas-mgr**
@@ -46,7 +46,7 @@ Quebic is a framework for writing serverless functions to run on Kubernetes. You
 ##### Programming Model
 ###### RequestHandler<Request, Response>
  * RequestHandler is an interface which comes with [quebic-runtime-java library](https://github.com/quebic-source/quebic-runtime-java). You can add your logic inside it's handle() method.
- * The Request Type and Response Type can be any Primitive datatype or Object.
+ * The Request Type and Response Type can be any Primitive data type or Object.
 ```java
 public class HelloFunction implements RequestHandler<Request, Response>{
  
@@ -89,7 +89,7 @@ context.messenger().publish("users.UserValidate", user, s->{
 
 ```
 ###### Logger
-* Logger provides way to attach logs for perticular request context. We will discuss more about this logger in later section.
+* Logger provides way to attach logs for particular request context. We will discuss more about this logger in later section.
 ```java
 context.logger().info("log info");
 context.logger().error("log error");
@@ -216,12 +216,12 @@ async: true # enable asynchronous invocation
 successResponseStatus: 201 # default response http status code
 event: users.UserCreate # event going to send
 requestMapping:
-  - eventAttribute: eID # attribute name which funtion going to access in event's payload
+  - eventAttribute: eID # attribute name which function going to access in event's payload
     requestAttribute: id # attribute name which come in http request
   - eventAttribute: eName
     requestAttribute: name
 headerMapping:
-  - eventAttribute: auth # attribute name which funtion going to access in event's payload
+  - eventAttribute: auth # attribute name which function going to access in event's payload
     headerAttribute: x-token # attribute name which come in http header
 headersToPass: # headers going to pass with event
   - Authorization
@@ -241,18 +241,18 @@ headersToPass: # headers going to pass with event
 * quebic route inspect --name [route name]
 
 
-## <a name="async"></a>Asynchronous invocation from Apigateway
- * Quebic provides way to invoke function Asynchronous way from apigateway.
- * After client send his request through the apigateway, He immediately gets a referance id (request-id) to track the request.
- * Then client can check the request by using that request-id from ApiGateway's request-tracker endpoint, If function already conpleted the task  client will get the result of request,otherwice he will get request-still-processing message.
+## <a name="async"></a> Asynchronous invocation from API Gateway
+ * Quebic provides way to invoke function Asynchronous way from API Gateway.
+ * After client send his request through the apigateway, He immediately gets a reference id (request-id) to track the request.
+ * Then client can check the request by using that request-id from request-tracker endpoint of API Gateway, If function already completed the task  client will get the result of request, otherwise he will get request-still-processing message.
  ```
- /request-tracker/{request-id}
+ <api-gateway>/request-tracker/{request-id}
  ```
 
 ## <a name="logs"></a>Logs
  * Quebic provides way to access function-container's native logs by using quebic cli.
  * **quebic function logs --name [function name]**
- * Instead of accessing native logs quebic also provides way to attach logs for perticular request context. 
+ * Instead of accessing native logs quebic also provides way to attach logs for particular request context. 
 ```java
 context.logger().info("log info");
 ```
@@ -277,3 +277,4 @@ context.logger().info("log info");
 
  ## License
  * This project is licensed under the Apache Licensed V2
+
