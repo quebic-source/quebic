@@ -1,6 +1,9 @@
 # Quebic - FaaS Framework
 
-Quebic is a framework for writing serverless functions to run on Kubernetes. You can write your functions in any language. Currently Quebic supports only for Java and NodeJS. [Example Project](https://github.com/quebic-source/quebic-sample-project)
+Quebic is a framework for writing serverless functions to run on Kubernetes. You can write your functions in any language. Currently Quebic supports only for Java and NodeJS.
+
+* [Demo](https://github.com/quebic-source/quebic-sample-project)
+* [Example Project](https://github.com/quebic-source/quebic-sample-project)
 
 ![quebic](https://github.com/quebic-source/quebic/blob/master/docs/quebic.png)
 
