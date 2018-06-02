@@ -2,7 +2,7 @@
 
 Quebic is a framework for writing serverless functions to run on Kubernetes. You can write your functions in any language. Currently Quebic supports only for Java and NodeJS.
 * [Wiki](https://github.com/quebic-source/quebic/wiki)
-* [Demo](https://github.com/quebic-source/quebic-sample-project)
+* [Demo](https://youtu.be/wxydEo5-wGo)
 * [Example Project](https://github.com/quebic-source/quebic-sample-project)
 
 ![quebic](https://github.com/quebic-source/quebic/blob/master/docs/quebic.png)
