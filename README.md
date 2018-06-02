@@ -37,6 +37,8 @@ Quebic is a framework for writing serverless functions to run on Kubernetes. You
 
 #### Run quebic-manager
  * Jump into quebic binaries location. Then run this **quebic-mgr**
+ * You can use quebic cli or quebic-mgr-dashboard ui to communicate with quebic-manager.
+ * By default quebic-mgr-dashboard ui is running [localhost:8000](http://localhost:8000)
  
 ## <a name="functions"></a>Functions
 #### Java Runtime
