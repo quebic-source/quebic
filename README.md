@@ -4,6 +4,7 @@ Quebic is a framework for writing serverless functions to run on Kubernetes. You
 * [Wiki](https://github.com/quebic-source/quebic/wiki)
 * [Demo](https://youtu.be/wxydEo5-wGo)
 * [Example Project](https://github.com/quebic-source/quebic-sample-project)
+* [Event-driven Microservices with Quebic](https://hackernoon.com/event-driven-microservices-with-quebic-f65f99a5b25a)
 
 ![quebic](https://github.com/quebic-source/quebic/blob/master/docs/quebic.png)
 
