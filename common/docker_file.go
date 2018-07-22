@@ -21,7 +21,7 @@ const DockerFileContent_Java = "FROM quebicdocker/quebic-faas-container-java:1.0
 const DockerFileContent_NodeJS = "FROM quebicdocker/quebic-faas-container-nodejs:1.0.0\nADD function_handler.tar /app/function_handler/\nARG access_key\nENV access_key $access_key\n"
 
 //DockerFileContent_Python_2_7 docker file
-const DockerFileContent_Python_2_7 = "FROM quebicdocker/quebic-faas-container-python-2_7:0.1.0\nADD function_handler.tar /app/function_handler/\nRUN pwd\n\nRUN ls\n\nRUN ls /app/function_handler/\n\nARG access_key\nENV access_key $access_key\n"
+const DockerFileContent_Python_2_7 = "FROM quebicdocker/quebic-faas-container-python-2_7:0.1.0\nADD function_handler.tar /app/function_handler/\nARG access_key\nENV access_key $access_key\n"
 
 //DockerFileContent_Python_3_6 docker file
 const DockerFileContent_Python_3_6 = "FROM quebicdocker/quebic-faas-container-python-3_6:0.1.0\nADD function_handler.tar /app/function_handler/\nARG access_key\nENV access_key $access_key\n"

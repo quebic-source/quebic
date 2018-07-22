@@ -10,7 +10,7 @@ import (
 )
 
 //BuildContextJS system create target js file name
-const BuildContextPystring = "handler.py"
+const BuildContextPystring = "handler"
 
 //BuildContextHandlerDir script dir inside docker
 const BuildContextHandlerDir string = "function_handler"
@@ -42,7 +42,8 @@ func (functionRunTime FunctionRunTime) SetFunctionHandler(
 		return fmt.Errorf("handler is invalide. unable to found module")
 	}
 
-	handlerFile := h[0] + ".py"
+	//handlerFile := h[0] + ".py"
+	handlerFile := h[0]
 	handlerPath := h[1]
 
 	function.HandlerPath = handlerPath
@@ -121,16 +122,19 @@ func (functionRunTime FunctionRunTime) CopyFunctionIntoBuildContextLocation(
 
 //nodejs file location inside docker
 func getDockerFunctionPy() string {
-	return function_common.GetDockerFunctionDir() + common.FilepathSeparator + BuildContextHandlerDir + common.FilepathSeparator + BuildContextPystring
+	//return function_common.GetDockerFunctionDir() + common.FilepathSeparator + BuildContextHandlerDir + common.FilepathSeparator + BuildContextPystring
+	return BuildContextPystring
 }
 
 //nodejs package file location inside docker
 func getDockerFunctionPyPackage(handlerFile string) string {
-	return function_common.GetDockerFunctionDir() + common.FilepathSeparator + BuildContextHandlerDir + common.FilepathSeparator + handlerFile
+	//return function_common.GetDockerFunctionDir() + common.FilepathSeparator + BuildContextHandlerDir + common.FilepathSeparator + handlerFile
+	return handlerFile
 }
 
 func getBuildContextPy(functionID string) string {
-	return function_common.GetFunctionDir(functionID) + common.FilepathSeparator + BuildContextPystring
+	//return function_common.GetFunctionDir(functionID) + common.FilepathSeparator + BuildContextPystring
+	return function_common.GetFunctionDir(functionID) + common.FilepathSeparator + BuildContextPystring + ".py"
 }
 
 func getBuildContextHandlerTar(functionID string) string {

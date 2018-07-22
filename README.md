@@ -45,6 +45,85 @@ Quebic is a framework for writing serverless functions to run on Kubernetes. You
  * By default quebic-mgr-dashboard ui is running [localhost:8000](http://localhost:8000)
  
 ## <a name="functions"></a>Functions
+
+#### Python Runtime
+##### [Example](https://github.com/quebic-source/quebic-sample-project)
+##### Programming Model
+###### RequestHandler
+ * Write your logic inside the handler.
+```python
+def handler(payload, context, callback):
+    
+    def callback(r):
+        callback(None, 'success', 201)
+
+    def error_callback(err):
+        callback(None, 'failed', 403)
+
+    context.messenger()
+      .publish(
+         'test.Receiver', 
+         {'id': payload}, 
+         callback, 
+         error_callback
+      )
+```
+
+###### Context
+ * Context have these methods.
+```python
+context.base_event # return event details comes into this function
+context.messenger() # return messenger instance
+context.logger() # return logger instance
+```
+
+###### CallBack
+* CallBack provides way to reply.
+```python
+callback(); # reply 200 status code with empty data
+callback(null, "success")  # reply 200 status code with data
+callback(null, "success", 201)  # reply 201 status code with data
+callback(error) # reply 500 status code with with error-data
+callback(error, null, 401) # reply 401 status code with with error-data 
+```
+
+###### Messenger
+* Messenger provides way to publish events.
+```python
+context.messenger().publish(
+    "users.UserValidate", # event id 
+    user, # payload
+    callback, # success callback(result)
+    error_callback, # err callback(err) 
+    1000 * 8 # timeout (ms)
+)
+
+```
+###### Logger
+* Logger provides way to attach logs for particular request context. We will discuss more about this logger in later section.
+```python
+context.logger().info("log info")
+context.logger().error("log error")
+context.logger().warn("log warn")
+```
+
+##### Deployment Spec
+ * Deployment .yml spec file by describing how you want to deploy your functions into quebic.
+ * Package your whole nodejs project dir into .tar file. Then set your .tar file location into source field in deployment spec.
+ * If your handler is just a single python file. Then just set your .py file location into source field. No need to package it. Then handler field will be like this *index.handler*. here handler is the function
+ * runtime will be python_2.7 or python_3.6
+ ```yml
+  function:
+    name: hello-function # function name 
+    source: /functions/hello-function.tar # tar package location
+    handler: index.handler # request handler 
+    runtime: python_2.7 # function runtime
+    replicas: 2 # replicas count
+    events: # function going to listen these events
+      - users.UserValidate
+    ...
+ ```
+
 #### Java Runtime
 ##### [Example](https://github.com/quebic-source/quebic-sample-project/tree/master/java-example)
 ##### Programming Model
