@@ -54,18 +54,18 @@ Quebic is a framework for writing serverless functions to run on Kubernetes. You
 ```python
 def handler(payload, context, callback):
     
-    def callback(r):
+    def m_callback(r):
         callback(None, 'success', 201)
 
-    def error_callback(err):
+    def m_error_callback(err):
         callback(None, 'failed', 403)
 
     context.messenger()
       .publish(
          'test.Receiver', 
          {'id': payload}, 
-         callback, 
-         error_callback
+         m_callback, 
+         m_error_callback
       )
 ```
 
