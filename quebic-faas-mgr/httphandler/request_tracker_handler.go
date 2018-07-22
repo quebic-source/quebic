@@ -25,13 +25,28 @@ func (httphandler *Httphandler) RequestTrackerHandler(router *mux.Router) {
 
 	router.HandleFunc("/request-trackers", func(w http.ResponseWriter, r *http.Request) {
 
-		requestTrackers, err := httphandler.loggerUtil.GetRequestTrackers()
+		qID := r.FormValue("id")
+		if qID == "" {
+
+			requestTrackers, err := httphandler.loggerUtil.GetRequestTrackers()
+			if err != nil {
+				makeErrorResponse(w, http.StatusInternalServerError, err)
+				return
+			}
+
+			writeResponse(w, requestTrackers, http.StatusOK)
+
+			return
+
+		}
+
+		rt, err := httphandler.loggerUtil.GetRequestTrackerByRequestID(qID)
 		if err != nil {
-			makeErrorResponse(w, http.StatusInternalServerError, err)
+			makeErrorResponse(w, http.StatusNotFound, err)
 			return
 		}
 
-		writeResponse(w, requestTrackers, http.StatusOK)
+		writeResponse(w, rt, http.StatusOK)
 
 	}).Methods("GET")
 

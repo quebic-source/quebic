@@ -37,6 +37,20 @@ func (mgrService *MgrService) FunctionDeploy(function *types.Function) *types.Er
 
 }
 
+//FunctionScale scale function
+func (mgrService *MgrService) FunctionScale(function *types.Function) *types.ErrorResponse {
+
+	return mgrService.functionScale(function)
+
+}
+
+//FunctionTest test function
+func (mgrService *MgrService) FunctionTest(functionTest *types.FunctionTest) (*types.FunctionTestResponse, *types.ErrorResponse) {
+
+	return mgrService.functionTest(functionTest)
+
+}
+
 //FunctionDelete function delete
 func (mgrService *MgrService) FunctionDelete(function *types.Function) *types.ErrorResponse {
 
@@ -69,6 +83,39 @@ func (mgrService *MgrService) functionDeploy(function *types.Function) *types.Er
 	parseResponseData(response.Data, function)
 
 	return nil
+}
+
+func (mgrService *MgrService) functionScale(function *types.Function) *types.ErrorResponse {
+
+	response, err := mgrService.makeRequest(api_function+"/scale", request_post, function, nil)
+	if err != nil {
+		return err
+	}
+
+	if response.StatusCode >= 300 {
+		return processErrorResponse(response)
+	}
+
+	parseResponseData(response.Data, function)
+
+	return nil
+}
+
+func (mgrService *MgrService) functionTest(functionTest *types.FunctionTest) (*types.FunctionTestResponse, *types.ErrorResponse) {
+
+	response, err := mgrService.makeRequest(api_function+"/test", request_post, functionTest, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	if response.StatusCode >= 300 {
+		return nil, processErrorResponse(response)
+	}
+
+	functionTestResponse := &types.FunctionTestResponse{}
+	parseResponseData(response.Data, functionTestResponse)
+
+	return functionTestResponse, nil
 }
 
 //FunctionsGetALL get all functions

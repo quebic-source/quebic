@@ -66,6 +66,7 @@ func SetUpHTTPHandlers(
 	http.ApigatewayDataServe(router)
 	http.MgrComponentHandler(router)
 	http.RequestTrackerHandler(router)
+	http.EventBoxHandler(router)
 
 }
 

@@ -50,3 +50,11 @@ const EnvKey_eventConst_eventLogListener = "eventConst.eventLogListener"
 const EnvKey_events = "events"
 const EnvKey_artifactLocation = "artifactLocation"
 const EnvKey_functionPath = "functionPath"
+
+//EventBox
+const EnvKey_mongo_host = "mongo.host"
+const EnvKey_mongo_port = "mongo.port"
+const EnvKey_mongo_db = "mongo.db"
+const EnvKey_mongo_username = "mongo.username"
+const EnvKey_mongo_password = "mongo.password"
+const EnvKey_eventbox_uri = "EVENTBOX_URI"

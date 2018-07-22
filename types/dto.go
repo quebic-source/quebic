@@ -53,6 +53,18 @@ type FunctionContainerLogOptions struct {
 	Details    bool   `json:"details"`
 }
 
+//FunctionTest function test
+type FunctionTest struct {
+	Name    string                 `json:"name" yaml:"name"`
+	Payload map[string]interface{} `json:"payload" yaml:"payload"`
+}
+
+//FunctionTestResponse functionTestResponse
+type FunctionTestResponse struct {
+	Status  int         `json:"status"`
+	Message interface{} `json:"message"`
+}
+
 //ErrorResponse errorResponse
 type ErrorResponse struct {
 	Status  int         `json:"status"`

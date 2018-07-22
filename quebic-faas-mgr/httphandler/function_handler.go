@@ -19,14 +19,19 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"path/filepath"
 	"quebic-faas/common"
+	"quebic-faas/messenger"
 	"quebic-faas/quebic-faas-mgr/config"
 	"quebic-faas/quebic-faas-mgr/dao"
-	"quebic-faas/quebic-faas-mgr/functionutil"
-	"quebic-faas/quebic-faas-mgr/functionutil/function_create"
+	"quebic-faas/quebic-faas-mgr/function_util"
+	"quebic-faas/quebic-faas-mgr/function_util/function_runtime"
+	"quebic-faas/quebic-faas-mgr/function_util/function_runtime/function_java_8_runtime"
+	"quebic-faas/quebic-faas-mgr/function_util/function_runtime/function_nodejs_runtime"
+	"quebic-faas/quebic-faas-mgr/function_util/function_runtime/function_python_2_7_runtime"
+	"quebic-faas/quebic-faas-mgr/function_util/function_runtime/function_python_3_6_runtime"
 	"quebic-faas/types"
 	"strings"
+	"time"
 
 	dep "quebic-faas/quebic-faas-mgr/deployment"
 
@@ -48,7 +53,7 @@ func (httphandler *Httphandler) FunctionHandler(router *mux.Router) {
 
 		qID := r.FormValue("id")
 		if qID == "" {
-			getAllFunctions(w, r, db, &types.Function{})
+			getAllFunctions(w, r, db, &types.Function{}, appConfig, deployment)
 			return
 		}
 
@@ -104,7 +109,7 @@ func (httphandler *Httphandler) FunctionHandler(router *mux.Router) {
 		errors := validationFunctionContainer(db, function)
 		if errors != nil {
 			status := http.StatusBadRequest
-			writeResponse(w, types.ErrorResponse{Cause: "validation-failed", Message: errors, Status: status}, status)
+			writeResponse(w, types.ErrorResponse{Cause: common.ErrorValidationFailed, Message: errors, Status: status}, status)
 			return
 		}
 
@@ -122,7 +127,7 @@ func (httphandler *Httphandler) FunctionHandler(router *mux.Router) {
 			return
 		}
 
-		_, err = functionutil.FunctionDeploy(
+		_, err = function_util.FunctionDeploy(
 			appConfig,
 			deployment,
 			function)
@@ -132,6 +137,104 @@ func (httphandler *Httphandler) FunctionHandler(router *mux.Router) {
 		}
 
 		writeResponse(w, function, 200)
+
+	}).Methods("POST")
+
+	router.HandleFunc("/functions/scale", func(w http.ResponseWriter, r *http.Request) {
+
+		function := &types.Function{}
+		err := processRequest(r, function)
+		if err != nil {
+			makeErrorResponse(w, http.StatusBadRequest, err)
+			return
+		}
+
+		trimStringFieldsFunction(function)
+
+		requestReplicas := function.Replicas
+
+		errors := validationFunctionContainer(db, function)
+		if errors != nil {
+			status := http.StatusBadRequest
+			writeResponse(w, types.ErrorResponse{Cause: common.ErrorValidationFailed, Message: errors, Status: status}, status)
+			return
+		}
+
+		if requestReplicas <= 0 {
+			status := http.StatusNotAcceptable
+			writeResponse(w, types.ErrorResponse{Cause: common.ErrorValidationFailed, Message: []string{"invalid replicas value. Must be greater than zero"}, Status: status}, status)
+			return
+		}
+
+		function.Replicas = requestReplicas
+
+		err = dao.Update(db, function)
+		if err != nil {
+			makeErrorResponse(w, http.StatusInternalServerError, err)
+			return
+		}
+
+		_, err = function_util.FunctionDeploy(
+			appConfig,
+			deployment,
+			function)
+		if err != nil {
+			makeErrorResponse(w, http.StatusInternalServerError, err)
+			return
+		}
+
+		writeResponse(w, function, 200)
+
+	}).Methods("POST")
+
+	router.HandleFunc("/functions/test", func(w http.ResponseWriter, r *http.Request) {
+
+		functionTest := &types.FunctionTest{}
+		err := processRequest(r, functionTest)
+		if err != nil {
+			makeErrorResponse(w, http.StatusBadRequest, err)
+			return
+		}
+
+		function := &types.Function{Name: functionTest.Name}
+
+		trimStringFieldsFunction(function)
+
+		errors := validationFunctionContainer(db, function)
+		if errors != nil {
+			status := http.StatusBadRequest
+			writeResponse(w, types.ErrorResponse{Cause: common.ErrorValidationFailed, Message: errors, Status: status}, status)
+			return
+		}
+
+		functionEventID := prepareFunctionEvent(function.Name)
+		payload := functionTest.Payload
+		requestHeaders := make(map[string]string)
+
+		const defaultRequestTimeout = 40 * time.Second
+
+		_, err = httphandler.messenger.PublishBlocking(
+			functionEventID,
+			payload,
+			requestHeaders,
+			func(message messenger.BaseEvent, statuscode int, context messenger.Context) {
+
+				successResponse := types.FunctionTestResponse{Status: statuscode, Message: message.GetPayloadAsObject()}
+				writeResponse(w, successResponse, http.StatusOK)
+
+			},
+			func(message string, statuscode int, context messenger.Context) {
+
+				errorResponse := types.FunctionTestResponse{Status: statuscode, Message: message}
+				writeResponse(w, errorResponse, http.StatusOK)
+
+			},
+			defaultRequestTimeout,
+		)
+		if err != nil {
+			makeErrorResponse(w, http.StatusInternalServerError, err)
+			return
+		}
 
 	}).Methods("POST")
 
@@ -149,7 +252,7 @@ func (httphandler *Httphandler) FunctionHandler(router *mux.Router) {
 		errors := validationFunctionContainer(db, function)
 		if errors != nil {
 			status := http.StatusBadRequest
-			writeResponse(w, types.ErrorResponse{Cause: "validation-failed", Message: errors, Status: status}, status)
+			writeResponse(w, types.ErrorResponse{Cause: common.ErrorValidationFailed, Message: errors, Status: status}, status)
 			return
 		}
 
@@ -160,7 +263,7 @@ func (httphandler *Httphandler) FunctionHandler(router *mux.Router) {
 		}
 
 		//stop container
-		err = functionutil.StopFunction(appConfig, deployment, function)
+		err = function_util.StopFunction(appConfig, deployment, function)
 		if err != nil {
 			makeErrorResponse(w, http.StatusInternalServerError, err)
 			return
@@ -187,7 +290,7 @@ func (httphandler *Httphandler) FunctionHandler(router *mux.Router) {
 		errors := validationFunctionContainer(db, &logDTO.Function)
 		if errors != nil {
 			status := http.StatusBadRequest
-			writeResponse(w, types.ErrorResponse{Cause: "validation-failed", Message: errors, Status: status}, status)
+			writeResponse(w, types.ErrorResponse{Cause: common.ErrorValidationFailed, Message: errors, Status: status}, status)
 			return
 		}
 
@@ -202,7 +305,7 @@ func (httphandler *Httphandler) FunctionHandler(router *mux.Router) {
 			Until:      logDTO.Options.Until,
 		}
 
-		functionService := functionutil.GetServiceID(logDTO.Function.Name)
+		functionService := function_util.GetServiceID(logDTO.Function.Name)
 		logs, err := deployment.LogsByName(functionService, options)
 		if err != nil {
 			makeErrorResponse(w, http.StatusInternalServerError, err)
@@ -246,13 +349,28 @@ func processFunctionSaveReqest(r *http.Request, functionDTO *types.FunctionDTO) 
 	return nil
 }
 
-func getAllFunctions(w http.ResponseWriter, r *http.Request, db *bolt.DB, entity types.Entity) {
+func getAllFunctions(
+	w http.ResponseWriter,
+	r *http.Request,
+	db *bolt.DB,
+	entity types.Entity,
+	appConfig config.AppConfig,
+	deployment dep.Deployment,
+) {
 
 	var functions []types.Function
 	err := dao.GetAll(db, entity, func(k, v []byte) error {
 
 		function := types.Function{}
 		json.Unmarshal(v, &function)
+
+		//DockerImageID is set mean docker image creation is completed for this function.
+		//Then deployment is must happen
+		if function.DockerImageID != "" {
+			//set deployment status from deployment
+			function.Status, _ = function_util.GetFunctionStatus(appConfig, deployment, function)
+		}
+
 		functions = append(functions, function)
 		return nil
 	})
@@ -312,7 +430,7 @@ func saveFunctionDTO(
 	errors := validateFunctionDTO(db, functionDTO, isCreate)
 	if len(errors) > 0 {
 		status := http.StatusBadRequest
-		writeResponse(w, types.ErrorResponse{Cause: "validation-failed", Message: errors, Status: status}, status)
+		writeResponse(w, types.ErrorResponse{Cause: common.ErrorValidationFailed, Message: errors, Status: status}, status)
 		return
 	}
 
@@ -322,11 +440,15 @@ func saveFunctionDTO(
 		return
 	}
 
-	_, err = functionutil.FunctionDeploy(
+	_, err = function_util.FunctionDeploy(
 		appConfig,
 		deployment,
 		function)
 	if err != nil {
+
+		entityLog := types.EntityLog{State: common.LogStateDeploymentFailed, Message: err.Error()}
+		dao.AddFunctionLog(db, function, entityLog, common.FunctionStatusFailed)
+
 		makeErrorResponse(w, http.StatusInternalServerError, err)
 		return
 	}
@@ -382,7 +504,7 @@ func saveFunction(
 
 func saveRoute(db *bolt.DB, route *types.Resource, appConfig config.AppConfig, deployment dep.Deployment, isCreate bool) error {
 
-	err := preProcessResource(db, route)
+	err := preProcessResource(route)
 	if err != nil {
 		return err
 	}
@@ -391,22 +513,18 @@ func saveRoute(db *bolt.DB, route *types.Resource, appConfig config.AppConfig, d
 		return nil
 	}
 
-	/*if isCreate {
-		err = dao.Add(db, route)
-		if err != nil {
-			return err
-		}
-	} else {
+	route.SetModifiedAt()
+
+	if checkRouteISAlreadyExists(db, route) {
 		err = dao.Update(db, route)
 		if err != nil {
 			return err
 		}
-	}*/
-
-	route.SetModifiedAt()
-	err = dao.Save(db, route)
-	if err != nil {
-		return err
+	} else {
+		err = dao.Add(db, route)
+		if err != nil {
+			return err
+		}
 	}
 
 	//re-start apigateway
@@ -473,9 +591,11 @@ func validationFunction(db *bolt.DB, function *types.Function, functionArtifactF
 			errors = append(errors, "runtime not match")
 		} else {
 
+			functionRunTime := prepareFunctionRunTime(common.Runtime(function.Runtime))
+
 			if function.Handler != "" {
 
-				err := prepareHandler(function, functionArtifactFile)
+				err := functionRunTime.SetFunctionHandler(function, functionArtifactFile)
 				if err != nil {
 					errors = append(errors, err.Error())
 				}
@@ -520,6 +640,21 @@ func validationFunction(db *bolt.DB, function *types.Function, functionArtifactF
 
 	return errors
 
+}
+
+func prepareFunctionRunTime(runtime common.Runtime) function_runtime.FunctionRunTime {
+
+	if runtime == common.RuntimeJava {
+		return function_java_8_runtime.FunctionRunTime{}
+	} else if runtime == common.RuntimeNodeJS {
+		return function_nodejs_runtime.FunctionRunTime{}
+	} else if runtime == common.RuntimePython_2_7 {
+		return function_python_2_7_runtime.FunctionRunTime{}
+	} else if runtime == common.RuntimePython_3_6 {
+		return function_python_3_6_runtime.FunctionRunTime{}
+	}
+
+	return nil
 }
 
 func validationFunctionContainer(db *bolt.DB, function *types.Function) []string {
@@ -604,62 +739,14 @@ func preProcessFunction(
 	//Events
 	function.Events = append(function.Events, prepareFunctionEvent(function.GetID()))
 
+	//Default function status
+	function.Status = common.FunctionStatusPending
+
 	return nil
 }
 
 func prepareFunctionEvent(functionID string) string {
 	return common.EventPrefixFunction + common.EventJOIN + functionID
-}
-
-func prepareHandler(function *types.Function, functionArtifactFile types.FunctionSourceFile) error {
-	functionRuntime := function.Runtime
-	functionArtifactFilename := functionArtifactFile.FileHeader.Filename
-
-	if functionRuntime == common.RuntimeJava {
-
-		if filepath.Ext(functionArtifactFilename) == ".jar" {
-			function.HandlerFile = function_create.GetDockerFunctionJAR()
-			function.HandlerPath = function.Handler
-			return nil
-		}
-
-	} else if functionRuntime == common.RuntimeNodeJS {
-
-		// Ex : handler = index.myHandler
-		//handler = {handlerFile}.{handlerPath}
-		h := strings.Split(function.Handler, ".")
-
-		if len(h) < 2 {
-			return makeError("handler is invalide. unable to found module", nil)
-		}
-
-		handlerFile := h[0] + ".js"
-		handlerPath := h[1]
-
-		function.HandlerPath = handlerPath
-
-		//node package
-		if filepath.Ext(functionArtifactFilename) == ".tar" || filepath.Ext(functionArtifactFilename) == ".gz" {
-
-			if handlerFile == "" {
-				return fmt.Errorf("handler cannot be empty for node package")
-			}
-
-			function.HandlerFile = function_create.GetDockerFunctionJSPackage(handlerFile)
-
-			return nil
-
-		} else if filepath.Ext(functionArtifactFilename) == ".js" {
-
-			function.HandlerFile = function_create.GetDockerFunctionJS()
-			return nil
-
-		}
-
-	}
-
-	return makeError("artifact file type invalide for runtime", nil)
-
 }
 
 func postProcessFunction(
@@ -670,7 +757,7 @@ func postProcessFunction(
 	function := &functionDTO.Function
 
 	entityLog := types.EntityLog{State: common.LogStateSaved}
-	dao.AddFunctionLog(db, function, entityLog)
+	dao.AddFunctionLog(db, function, entityLog, common.FunctionStatusPending)
 
 	authConfig, err := dockerConfig.GetDockerAuthConfig()
 	if err != nil {
@@ -678,17 +765,18 @@ func postProcessFunction(
 		return err
 	}
 
-	dockerImageID, err := functionutil.FunctionCreate(authConfig, *functionDTO)
+	functionRunTime := prepareFunctionRunTime(common.Runtime(function.Runtime))
+	dockerImageID, err := function_util.FunctionCreate(authConfig, *functionDTO, functionRunTime)
 
 	if err != nil {
 		entityLog = types.EntityLog{State: common.LogStateDockerImageCreatingFailed, Message: err.Error()}
-		dao.AddFunctionLog(db, function, entityLog)
+		dao.AddFunctionLog(db, function, entityLog, common.FunctionStatusFailed)
 		return err
 	}
 
 	dao.AddFunctionDockerImageID(db, function, dockerImageID)
 	entityLog = types.EntityLog{State: common.LogStateDockerImageCreated, Message: dockerImageID}
-	dao.AddFunctionLog(db, function, entityLog)
+	dao.AddFunctionLog(db, function, entityLog, common.FunctionStatusPending)
 
 	function.DockerImageID = dockerImageID
 

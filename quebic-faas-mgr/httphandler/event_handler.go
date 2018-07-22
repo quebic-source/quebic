@@ -114,9 +114,12 @@ func validationEvent(event *types.Event) []string {
 
 	var errors []string
 
-	if event.Group == "" {
-		errors = append(errors, "event group field should not be empty")
-	}
+	//TODO needs to re think about this validation
+	/*
+		if event.Group == "" {
+			errors = append(errors, "event group field should not be empty")
+		}
+	*/
 
 	if strings.Contains(event.Group, " ") {
 		errors = append(errors, "event group field not allow to contain spaces")
@@ -139,7 +142,11 @@ func validationEvent(event *types.Event) []string {
 }
 
 func processEvent(event *types.Event) {
-	event.ID = common.EventPrefixUserDefined + common.EventJOIN + event.Group + common.EventJOIN + event.Name
+	if event.Group == "" {
+		event.ID = common.EventPrefixUserDefined + common.EventJOIN + event.Name
+	} else {
+		event.ID = common.EventPrefixUserDefined + common.EventJOIN + event.Group + common.EventJOIN + event.Name
+	}
 }
 
 /*

@@ -1,0 +1,30 @@
+function:
+  name: hello2
+  version: 0.2.1
+  source: /home/tharanga/my/quebic-faas/quebic-faas-container-nodejs/test_function/test_function.tar
+  handler: function_2.helloFunction
+  runtime: nodejs
+  replicas: 1
+  events:
+    - products.ProductCreate
+    - products.ProductGetByID
+    - products.ProductDelete
+  env:
+    - name: e1
+      value: v1
+    - name: e2
+      value: v2_x
+
+route:
+  requestMethod: GET
+  url: /hello2/{pId}
+  requestMapping:
+    - eventAttribute: id
+      requestAttribute: pId
+    - eventAttribute: name
+      requestAttribute: qName
+  headerMapping:
+    - eventAttribute: auth
+      headerAttribute: x-token
+  headersToPass:
+    - Authorization

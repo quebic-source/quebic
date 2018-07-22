@@ -28,7 +28,7 @@ const eventbusReplicas = 1
 func EventbusSetup(appConfig *config.AppConfig, deployment dep.Deployment) error {
 
 	componentID := common.ComponentEventBus
-	log.Printf("%s-component : starting", componentID)
+	log.Printf("%s : starting", componentID)
 
 	eventBusConfig := appConfig.EventBusConfig
 
@@ -50,14 +50,14 @@ func EventbusSetup(appConfig *config.AppConfig, deployment dep.Deployment) error
 
 	details, err := deployment.CreateOrUpdate(deploymentSpec)
 	if err != nil {
-		return fmt.Errorf("%s-component-setup-failed : %v", componentID, err)
+		return fmt.Errorf("%s setup-failed : %v", componentID, err)
 	}
 
 	host := details.Host
 	appConfig.EventBusConfig.AMQPHost = host
 	appConfig.EventBusConfig.ManagementHost = host
 
-	log.Printf("%s-component : started", componentID)
+	log.Printf("%s : started", componentID)
 
 	return nil
 

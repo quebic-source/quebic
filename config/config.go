@@ -16,16 +16,16 @@ package config
 
 //ServerConfig manager server confog
 type ServerConfig struct {
-	Host string `json:"host"`
-	Port int    `json:"port"`
+	Host string `json:"host" yaml:"host"`
+	Port int    `json:"port" yaml:"port"`
 }
 
 //EventBusConfig rabbitmq server confog
 type EventBusConfig struct {
-	AMQPHost           string `json:"amqpHost"`
-	AMQPPort           int    `json:"amqPort"`
-	ManagementHost     string `json:"managementHost"`
-	ManagementPort     int    `json:"managementPort"`
-	ManagementUserName string `json:"managementUserName"`
-	ManagementPassword string `json:"managementPassword"`
+	AMQPHost           string `json:"amqpHost" yaml:"amqpHost"`
+	AMQPPort           int    `json:"amqpPort" yaml:"amqpPort"`
+	ManagementHost     string `json:"managementHost" yaml:"managementHost"`
+	ManagementPort     int    `json:"managementPort" yaml:"managementPort"`
+	ManagementUserName string `json:"managementUserName" yaml:"managementUserName"`
+	ManagementPassword string `json:"managementPassword" yaml:"managementPassword"`
 }

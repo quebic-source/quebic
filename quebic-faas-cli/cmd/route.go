@@ -119,7 +119,7 @@ func routeSave(cmd *cobra.Command, args []string, isAdd bool) {
 		prepareErrorResponse(cmd, errResponse)
 	}
 
-	color.Green("%s route saved", route.GetID())
+	color.Green("%s route is saved", route.GetID())
 
 }
 

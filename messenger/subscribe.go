@@ -16,7 +16,6 @@ package messenger
 
 import (
 	"fmt"
-	"log"
 )
 
 //Subscribe subscribe
@@ -85,9 +84,6 @@ func (messenger *Messenger) Subscribe(eventID string, requestHandler func(baseEv
 		}
 
 	}()
-
-	//TODO remove log
-	log.Printf("subscribed for event : %s", routingKey)
 
 	return nil
 

@@ -38,6 +38,7 @@ type Details struct {
 	Envkeys     map[string]string
 	Host        string
 	PortConfigs []PortConfig
+	Status      string
 }
 
 //Spec deployment spec

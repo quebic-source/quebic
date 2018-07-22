@@ -27,10 +27,34 @@ const RuntimeJava = "java"
 //RuntimeNodeJS nodejs
 const RuntimeNodeJS = "nodejs"
 
+//RuntimePython_2_7 python 2.7
+const RuntimePython_2_7 = "python_2.7"
+
+//RuntimePython_3_6 python 3_6
+const RuntimePython_3_6 = "python_3.6"
+
+//KubeStatusTrue True
+const KubeStatusTrue = "True"
+
+//KubeStatusFalse False
+const KubeStatusFalse = "False"
+
+//FunctionStatusRunning Running
+const FunctionStatusRunning = "Running"
+
+//FunctionStatusPending Pending
+const FunctionStatusPending = "Pending"
+
+//FunctionStatusNotFound NotFound
+const FunctionStatusNotFound = "NotFound"
+
+//FunctionStatusFailed Failed
+const FunctionStatusFailed = "Failed"
+
 //RuntimeValidate runtime validate
 func RuntimeValidate(runtime Runtime) bool {
 
-	runtimesAviable := [2]string{RuntimeJava, RuntimeNodeJS}
+	runtimesAviable := [4]string{RuntimeJava, RuntimeNodeJS, RuntimePython_2_7, RuntimePython_3_6}
 
 	for _, runtimeAviable := range runtimesAviable {
 
@@ -41,5 +65,16 @@ func RuntimeValidate(runtime Runtime) bool {
 	}
 
 	return false
+
+}
+
+//GetFunctionStatus map kube status-value to quebic status-value
+func GetFunctionStatus(kubeStatus string) string {
+
+	if kubeStatus == KubeStatusTrue {
+		return FunctionStatusRunning
+	}
+
+	return FunctionStatusPending
 
 }

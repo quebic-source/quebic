@@ -15,8 +15,8 @@ type AppConfig struct {
 
 //SavingConfig configuration going for save
 type SavingConfig struct {
-	Auth            AuthConfig          `json:"auth"`
-	MgrServerConfig config.ServerConfig `json:"mgrServerConfig"`
+	Auth            AuthConfig          `json:"auth" yaml:"auth"`
+	MgrServerConfig config.ServerConfig `json:"mgrServerConfig" yaml:"mgrServerConfig"`
 }
 
 //SetDefault set default values
@@ -44,5 +44,5 @@ func (appConfig *AppConfig) SetDefault() {
 
 //AuthConfig auth-token for connect manager
 type AuthConfig struct {
-	AuthToken string `json:"authToken"`
+	AuthToken string `json:"authToken" yaml:"authToken"`
 }

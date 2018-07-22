@@ -151,7 +151,7 @@ func (app *App) loadAPIGatewayData() {
 		common.EventApigatewayDataFetch,
 		"",
 		requestHeaders,
-		func(message messenger.BaseEvent, status int) {
+		func(message messenger.BaseEvent, status int, context messenger.Context) {
 
 			apigatewayData := &types.ApigatewayData{}
 			message.ParsePayloadAsObject(apigatewayData)
@@ -160,7 +160,7 @@ func (app *App) loadAPIGatewayData() {
 			log.Printf("apigateway-data fetched")
 
 		},
-		func(err string, statuscode int) {
+		func(err string, statuscode int, context messenger.Context) {
 
 			log.Printf("apigateway-data fetched failed : %v", err)
 			app.addStatus(appStatusKeyApigatewatDataFetch, err)

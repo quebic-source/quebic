@@ -15,8 +15,10 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
+	quebic_common "quebic-faas/common"
 	"quebic-faas/quebic-faas-cli/common"
 	"quebic-faas/types"
 	"reflect"
@@ -28,12 +30,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-//var functionSpecFile string
-//var functionArtifactFile string
 var functionInputFile string
-
 var functionName string
 var functionVersion string
+var functionReplicas int
+var functionTestPayload string
 var functionStart bool
 
 func init() {
@@ -53,6 +54,8 @@ func setupFunctionCmds() {
 	functionCmd.AddCommand(functionCreateCmd)
 	functionCmd.AddCommand(functionUpdateCmd)
 	functionCmd.AddCommand(functionDeployCmd)
+	functionCmd.AddCommand(functionScaleCmd)
+	functionCmd.AddCommand(functionTestCmd)
 	functionCmd.AddCommand(functionDeleteCmd)
 	functionCmd.AddCommand(functionGetALLCmd)
 	functionCmd.AddCommand(functionInspectCmd)
@@ -75,6 +78,14 @@ func setupFunctionFlags() {
 	//function-deploy
 	functionDeployCmd.PersistentFlags().StringVarP(&functionName, "name", "n", "", "function name")
 	functionDeployCmd.PersistentFlags().StringVarP(&functionVersion, "version", "v", "", "function version")
+
+	//function-scale
+	functionScaleCmd.PersistentFlags().StringVarP(&functionName, "name", "n", "", "function name")
+	functionScaleCmd.PersistentFlags().IntVarP(&functionReplicas, "replicas", "r", 1, "function replicas value")
+
+	//function-deploy
+	functionTestCmd.PersistentFlags().StringVarP(&functionName, "name", "n", "", "function name")
+	functionTestCmd.PersistentFlags().StringVarP(&functionTestPayload, "payload", "p", "", "test payload")
 
 	//function-delete
 	functionDeleteCmd.PersistentFlags().StringVarP(&functionName, "name", "n", "", "function name")
@@ -108,6 +119,24 @@ var functionDeployCmd = &cobra.Command{
 	Long:  `function : deploy`,
 	Run: func(cmd *cobra.Command, args []string) {
 		functionDeploy(cmd, args)
+	},
+}
+
+var functionScaleCmd = &cobra.Command{
+	Use:   "scale",
+	Short: "function : scale",
+	Long:  `function : scale`,
+	Run: func(cmd *cobra.Command, args []string) {
+		functionScale(cmd, args)
+	},
+}
+
+var functionTestCmd = &cobra.Command{
+	Use:   "test",
+	Short: "function : test",
+	Long:  `function : test`,
+	Run: func(cmd *cobra.Command, args []string) {
+		functionTest(cmd, args)
 	},
 }
 
@@ -159,7 +188,7 @@ func functionSave(cmd *cobra.Command, args []string, isAdd bool) {
 		prepareErrorResponse(cmd, errResponse)
 	}
 
-	color.Green("%s:%s function saved", functionDTO.Function.GetID(), functionDTO.Function.Version)
+	color.Green("%s:%s function is saved", functionDTO.Function.GetID(), functionDTO.Function.Version)
 
 }
 
@@ -175,7 +204,54 @@ func functionDeploy(cmd *cobra.Command, args []string) {
 		prepareErrorResponse(cmd, errResponse)
 	}
 
-	color.Green("%s:%s function deployed", function.GetID(), function.Version)
+	color.Green("%s:%s function is deployed", function.GetID(), function.Version)
+
+}
+
+func functionScale(cmd *cobra.Command, args []string) {
+
+	function := &types.Function{Name: functionName, Replicas: functionReplicas}
+
+	mgrService := appContainer.GetMgrService()
+
+	errResponse := mgrService.FunctionScale(function)
+
+	if errResponse != nil {
+		prepareErrorResponse(cmd, errResponse)
+	}
+
+	color.Green("%s:%s function is scaled", function.GetID(), function.Version)
+
+}
+
+func functionTest(cmd *cobra.Command, args []string) {
+
+	payloadMap := make(map[string]interface{})
+	err := json.Unmarshal([]byte(functionTestPayload), &payloadMap)
+	if err != nil {
+		prepareErrorResponse(cmd,
+			&types.ErrorResponse{
+				Status:  400,
+				Cause:   "invalid-request",
+				Message: "please enter valid json formatted payload",
+			},
+		)
+		return
+	}
+
+	functionTest := &types.FunctionTest{Name: functionName, Payload: payloadMap}
+
+	mgrService := appContainer.GetMgrService()
+
+	functionTestResponse, errResponse := mgrService.FunctionTest(functionTest)
+
+	if errResponse != nil {
+		prepareErrorResponse(cmd, errResponse)
+	}
+
+	jsonResponse, _ := json.Marshal(functionTestResponse)
+
+	color.Green("%s", jsonResponse)
 
 }
 
@@ -190,7 +266,7 @@ func functionDelete(cmd *cobra.Command, args []string, fID string) {
 	mgrService := appContainer.GetMgrService()
 
 	errResponse := mgrService.FunctionDelete(function)
-	color.Green("%s function deleted", function.Name)
+	color.Green("%s function is deleted", function.Name)
 
 	if errResponse != nil {
 		prepareErrorResponse(cmd, errResponse)
@@ -207,7 +283,13 @@ func functionGetALL(cmd *cobra.Command, args []string) {
 	}
 
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"Name", "Docker_Image_ID", "Route"})
+	table.SetHeader([]string{
+		"Name",
+		"Runtime",
+		"Replicas",
+		"Route",
+		"Status",
+	})
 	table.SetBorders(tablewriter.Border{Left: true, Top: false, Right: true, Bottom: false})
 	table.SetCenterSeparator("|")
 	table.AppendBulk(prepareFunctionsTable(functions))
@@ -235,10 +317,12 @@ func prepareFunctionsTable(data []types.Function) [][]string {
 	for _, val := range data {
 
 		name := val.Name
-		dockerImageID := val.DockerImageID
+		runtime := val.Runtime
+		replicas := quebic_common.IntToStr(val.Replicas)
 		route := val.Route
+		status := val.Status
 
-		rows = append(rows, []string{name, dockerImageID, route})
+		rows = append(rows, []string{name, runtime, replicas, route, status})
 
 	}
 

@@ -18,34 +18,34 @@ import (
 	"fmt"
 	"log"
 	"quebic-faas/quebic-faas-mgr/deployment"
+	"time"
 
 	"quebic-faas/quebic-faas-mgr/config"
 
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
 	"k8s.io/api/core/v1"
 	apiv1 "k8s.io/api/core/v1"
+	extv1beta1 "k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
 	kubev1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	typedextv1beta1 "k8s.io/client-go/kubernetes/typed/extensions/v1beta1"
 	"k8s.io/client-go/tools/clientcmd"
 
+	"quebic-faas/common"
 	quebictypes "quebic-faas/types"
 )
 
 const kubeSelecterKey = "quebic-faas-app"
 const kubeNamespace = "quebic-faas"
+const kubeIngressName = "quebic-faas-ingress"
+const kubeIngressAvailableWaitTime = time.Minute * 10
 
 //Config kubernates config
 type Config struct {
-	ConfigPath    string        `json:"configPath"`
-	IngressConfig IngressConfig `json:"ingressConfig"`
-}
-
-//IngressConfig config for ingress controller
-type IngressConfig struct {
-	StaticIP string `json:"staticIP"`
+	ConfigPath string `json:"configPath"`
 }
 
 //Deployment kube deployment
@@ -130,7 +130,57 @@ func (kubeDeployment Deployment) ListAll(filters deployment.ListFilters) ([]depl
 
 //ListByName implementation for deployment.ListByName()
 func (kubeDeployment Deployment) ListByName(name string) (deployment.Details, error) {
-	return deployment.Details{}, nil
+
+	//deployment details
+	clientset, err := kubeDeployment.getClient()
+	if err != nil {
+		return deployment.Details{}, err
+	}
+
+	deploymentsClient := clientset.AppsV1beta1().Deployments(kubeNamespace)
+
+	deploymentDetails, err := deploymentsClient.Get(name, metav1.GetOptions{})
+	if err != nil {
+		return deployment.Details{}, err
+	}
+
+	conditionStatus := common.FunctionStatusFailed
+	conditions := deploymentDetails.Status.Conditions
+	if len(conditions) > 0 {
+		for _, spec := range conditions {
+			if spec.Type == "Available" {
+				conditionStatus = common.GetFunctionStatus(string(spec.Status))
+				break
+			}
+		}
+	}
+
+	//service details
+	service := clientset.Core().Services(kubeNamespace)
+	serviceDetails, err := service.Get(name, metav1.GetOptions{})
+	if err != nil {
+		return deployment.Details{}, err
+	}
+
+	host := serviceDetails.Spec.ClusterIP
+
+	//ports
+	var ports []deployment.PortConfig
+	for _, specPorts := range serviceDetails.Spec.Ports {
+		ports = append(ports, deployment.PortConfig{
+			Name:     specPorts.Name,
+			Protocol: deployment.PortProtocol(specPorts.Protocol),
+			Port:     deployment.Port(specPorts.Port),
+		})
+	}
+
+	//append details
+	return deployment.Details{
+		Status:      string(conditionStatus),
+		Host:        host,
+		PortConfigs: ports,
+	}, nil
+
 }
 
 //LogsByName implementation for deployment.LogsByName()
@@ -295,16 +345,16 @@ func (kubeDeployment Deployment) serviceDeleteByAppName(appName string) error {
 		return err
 	}
 
-	deploymentsClient := clientset.AppsV1beta1().Deployments(kubeNamespace)
-	err = deploymentsClient.Delete(appName, &metav1.DeleteOptions{})
-	if err != nil {
-		log.Printf("kube-deployment delete failed : %v", err)
-	}
-
 	service := clientset.Core().Services(kubeNamespace)
 	err = service.Delete(appName, &metav1.DeleteOptions{})
 	if err != nil {
 		log.Printf("kube-service delete failed : %v", err)
+	}
+
+	deploymentsClient := clientset.AppsV1beta1().Deployments(kubeNamespace)
+	err = deploymentsClient.Delete(appName, &metav1.DeleteOptions{})
+	if err != nil {
+		log.Printf("kube-deployment delete failed : %v", err)
 	}
 
 	return nil
@@ -514,6 +564,230 @@ func (kubeDeployment Deployment) getServiceByAppName(service kubev1.ServiceInter
 
 	return svc, nil
 
+}
+
+//IngressInspect ingress get details
+func IngressInspect(kubeDeployment Deployment) (*extv1beta1.Ingress, error) {
+
+	ingress, err := ingressInspect(kubeDeployment)
+	if err != nil {
+		log.Printf("kube-ingress-inspect-failed : %v", err)
+		return nil, err
+	}
+
+	return ingress, nil
+
+}
+
+//IngressLoadbalancerIP ingress get lb ip
+func IngressLoadbalancerIP(kubeDeployment Deployment) (string, error) {
+
+	ingress, err := ingressInspect(kubeDeployment)
+	if err != nil {
+		log.Printf("kube-ingress-inspect-failed : %v", err)
+		return "", err
+	}
+
+	return getIngressLoadbalancerIP(ingress), nil
+
+}
+
+//IngressCreateOrUpdate ingress update or create
+func IngressCreateOrUpdate(
+	kubeDeployment Deployment,
+	apiGatewayConfig config.APIGatewayConfig) (*extv1beta1.Ingress, error) {
+
+	ingress, err := ingressUpdate(kubeDeployment, apiGatewayConfig)
+	if err != nil {
+
+		if errors.IsNotFound(err) {
+
+			ingress, err = ingressCreate(kubeDeployment, apiGatewayConfig)
+			if err != nil {
+				log.Printf("kube-ingress-create-failed : %v", err)
+				return nil, err
+			}
+
+		} else {
+			log.Printf("kube-ingress-update-failed : %v", err)
+			return nil, err
+		}
+
+	}
+
+	return ingress, nil
+
+}
+
+func ingressInspect(kubeDeployment Deployment) (*extv1beta1.Ingress, error) {
+
+	clientset, err := kubeDeployment.getClient()
+	if err != nil {
+		return nil, err
+	}
+
+	ingressesClient := clientset.ExtensionsV1beta1().Ingresses(kubeNamespace)
+
+	return ingressesClient.Get(kubeIngressName, metav1.GetOptions{})
+
+}
+
+func ingressCreate(
+	kubeDeployment Deployment,
+	apiGatewayConfig config.APIGatewayConfig) (*extv1beta1.Ingress, error) {
+
+	clientset, err := kubeDeployment.getClient()
+	if err != nil {
+		return nil, err
+	}
+
+	ingressesClient := clientset.ExtensionsV1beta1().Ingresses(kubeNamespace)
+
+	ingressSpec := getIngressSpec(apiGatewayConfig)
+
+	ingress, err := ingressesClient.Create(ingressSpec)
+	if err != nil {
+		return nil, err
+	}
+
+	err = waitingForIngressAvailable(ingressesClient)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Println("kube-ingress : created")
+
+	return ingress, nil
+
+}
+
+func ingressUpdate(
+	kubeDeployment Deployment,
+	apiGatewayConfig config.APIGatewayConfig) (*extv1beta1.Ingress, error) {
+
+	clientset, err := kubeDeployment.getClient()
+	if err != nil {
+		return nil, err
+	}
+
+	ingressesClient := clientset.ExtensionsV1beta1().Ingresses(kubeNamespace)
+
+	ingressSpec := getIngressSpec(apiGatewayConfig)
+
+	ingress, err := ingressesClient.Update(ingressSpec)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Println("kube-ingress : updated")
+
+	return ingress, nil
+
+}
+
+func getIngressSpec(apiGatewayConfig config.APIGatewayConfig) *extv1beta1.Ingress {
+
+	apiGatewayPort := int32(apiGatewayConfig.ServerConfig.Port)
+	ingressConfig := apiGatewayConfig.IngressConfig
+
+	annotations := make(map[string]string)
+
+	if ingressConfig.Provider == "" {
+		annotations[common.IngressClass] = common.IngressNginx
+	} else {
+		annotations[ingressConfig.Provider] = ingressConfig.StaticIP
+	}
+
+	ingressBackend := extv1beta1.IngressBackend{
+		ServiceName: common.ComponentAPIGateway,
+		ServicePort: intstr.IntOrString{
+			Type:   intstr.Int,
+			IntVal: apiGatewayPort,
+		},
+	}
+
+	httpIngressPath := extv1beta1.HTTPIngressPath{
+		Backend: ingressBackend,
+		Path:    ingressConfig.RoutePrefix,
+	}
+
+	ingressRule := extv1beta1.IngressRule{
+		Host: "quebic-faas-api.io",
+		IngressRuleValue: extv1beta1.IngressRuleValue{
+			HTTP: &extv1beta1.HTTPIngressRuleValue{
+				Paths: []extv1beta1.HTTPIngressPath{httpIngressPath},
+			},
+		},
+	}
+
+	ingressSpec := &extv1beta1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        kubeIngressName,
+			Annotations: annotations,
+		},
+		Spec: extv1beta1.IngressSpec{
+			Rules: []extv1beta1.IngressRule{ingressRule},
+		},
+	}
+
+	return ingressSpec
+
+}
+
+func waitingForIngressAvailable(ingressClient typedextv1beta1.IngressInterface) error {
+
+	waitForResponse := make(chan bool)
+
+	go func() {
+
+		log.Printf("waiting for ingress available")
+
+		for {
+
+			ingress, err := ingressClient.Get(kubeIngressName, metav1.GetOptions{})
+			if err != nil {
+				waitForResponse <- false
+				break
+			}
+
+			lbIP := getIngressLoadbalancerIP(ingress)
+			if lbIP != "" {
+				waitForResponse <- true
+				break
+			}
+
+			time.Sleep(time.Second * 2)
+
+			fmt.Print(".")
+
+		}
+		fmt.Println("")
+	}()
+
+	select {
+	case status := <-waitForResponse:
+
+		if !status {
+			return fmt.Errorf("kube-ingress-inspect failed")
+		}
+
+		return nil
+
+	case <-time.After(kubeIngressAvailableWaitTime):
+		return fmt.Errorf("ingress take longtime to available. please try again. reason : timeout")
+	}
+
+}
+
+func getIngressLoadbalancerIP(ingress *extv1beta1.Ingress) string {
+
+	lbs := ingress.Status.LoadBalancer.Ingress
+	if len(lbs) > 0 {
+		lb := lbs[0]
+		return lb.IP
+	}
+
+	return ""
 }
 
 func int32Ptr(i int32) *int32 { return &i }

@@ -24,3 +24,12 @@ const ComponentEventBus = componentPrefix + "eventbus"
 
 //ComponentAPIGateway apigateway
 const ComponentAPIGateway = componentPrefix + "apigateway"
+
+//ComponentMgrDashboard mgr-dashboard
+const ComponentMgrDashboard = componentPrefix + "mgr-dashboard"
+
+//ComponentEventBox eventbox
+const ComponentEventBox = componentPrefix + "eventbox"
+
+//ComponentEventBoxDB eventbox-db
+const ComponentEventBoxDB = componentPrefix + "eventbox-db"

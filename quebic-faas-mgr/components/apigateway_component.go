@@ -30,7 +30,7 @@ const apigatewayReplicas = 1
 func ApigatewaySetup(appConfig *config.AppConfig, deployment dep.Deployment) error {
 
 	componentID := common.ComponentAPIGateway
-	log.Printf("%s-component : starting", componentID)
+	log.Printf("%s : starting", componentID)
 
 	//port details always come from config settings
 	apiGatewayPort := appConfig.APIGatewayConfig.ServerConfig.Port
@@ -56,13 +56,13 @@ func ApigatewaySetup(appConfig *config.AppConfig, deployment dep.Deployment) err
 
 	details, err := deployment.CreateOrUpdate(deploymentSpec)
 	if err != nil {
-		return fmt.Errorf("%s-component-setup-failed : %v", componentID, err)
+		return fmt.Errorf("%s setup-failed : %v", componentID, err)
 	}
 
 	host := details.Host
 	appConfig.APIGatewayConfig.ServerConfig.Host = host
 
-	log.Printf("%s-component : started", componentID)
+	log.Printf("%s : started", componentID)
 
 	return nil
 

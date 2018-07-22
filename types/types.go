@@ -141,22 +141,23 @@ func (o *Resource) SetModifiedAt() {
 //      Runtime node package : user defined
 // Route : function invoker route id. nor required
 type Function struct {
-	Name          string    `json:"name" yaml:"name"`
-	Version       string    `json:"version" yaml:"version"` //current version
-	Versions      []string  `json:"versions" yaml:"versions"`
-	DockerImageID string    `json:"dockerImageID" yaml:"dockerImageID"`
-	Source        string    `json:"source" yaml:"source"`
-	Handler       string    `json:"handler" yaml:"handler"`
-	HandlerPath   string    `json:"handlerPath" yaml:"handlerPath"`
-	HandlerFile   string    `json:"handlerFile" yaml:"handlerFile"`
-	Runtime       string    `json:"runtime" yaml:"runtime"`
-	Events        []string  `json:"events" yaml:"events"`
-	Replicas      int       `json:"replicas" yaml:"replicas"`
-	SecretKey     string    `json:"secretKey"`
-	Route         string    `json:"route"`
-	Log           EntityLog `json:"log"`
-	CreatedAt     string    `json:"createdAt" yaml:"createdAt"`   //created time
-	ModifiedAt    string    `json:"modifiedAt" yaml:"modifiedAt"` //modified time
+	Name                 string                `json:"name" yaml:"name"`
+	Version              string                `json:"version" yaml:"version"` //current version
+	Versions             []string              `json:"versions" yaml:"versions"`
+	DockerImageID        string                `json:"dockerImageID" yaml:"dockerImageID"`
+	Source               string                `json:"source" yaml:"source"`
+	Handler              string                `json:"handler" yaml:"handler"`
+	HandlerPath          string                `json:"handlerPath" yaml:"handlerPath"`
+	HandlerFile          string                `json:"handlerFile" yaml:"handlerFile"`
+	Runtime              string                `json:"runtime" yaml:"runtime"`
+	Events               []string              `json:"events" yaml:"events"`
+	Replicas             int                   `json:"replicas" yaml:"replicas"`
+	EnvironmentVariables []EnvironmentVariable `json:"env" yaml:"env"`
+	SecretKey            string                `json:"secretKey"`
+	Route                string                `json:"route"`
+	Log                  EntityLog             `json:"log"`
+	ModifiedAt           string                `json:"modifiedAt" yaml:"modifiedAt"` //modified time
+	Status               string                `json:"status" yaml:"status"`
 }
 
 //GetReflectObject get Reflect Object
@@ -177,6 +178,12 @@ func (o *Function) SetID(id string) {
 //SetModifiedAt set modified date
 func (o *Function) SetModifiedAt() {
 	o.ModifiedAt = common.CurrentTime()
+}
+
+//EnvironmentVariable environmentVariable
+type EnvironmentVariable struct {
+	Name  string `json:"name" yaml:"name"`
+	Value string `json:"value" yaml:"value"`
 }
 
 //ManagerComponent components handle by manager ######################################

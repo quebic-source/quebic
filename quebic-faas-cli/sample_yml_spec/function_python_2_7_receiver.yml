@@ -1,0 +1,14 @@
+function:
+  name: py-receiver
+  version: 0.1.0
+  source: /home/tharanga/my/quebic-faas/quebic-faas-container-python/test/sample_handlers/package/package.tar.gz
+  handler: handler.test_handler_1
+  runtime: python_2.7
+  replicas: 1
+  events:
+    - test.Receiver
+  env:
+    - name: e1
+      value: v1
+    - name: e2
+      value: v2_x

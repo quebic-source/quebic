@@ -89,16 +89,16 @@ func (httphandler *Httphandler) ResourceHandler(router *mux.Router) {
 
 		trimStringFieldsResource(resource)
 
-		errors := validationRoute(db, resource, false, true)
-		if errors != nil {
-			status := http.StatusBadRequest
-			writeResponse(w, types.ErrorResponse{Cause: "validation-Failed", Message: errors, Status: status}, status)
+		err = preProcessResource(resource)
+		if err != nil {
+			makeErrorResponse(w, http.StatusInternalServerError, err)
 			return
 		}
 
-		err = preProcessResource(db, resource)
-		if err != nil {
-			makeErrorResponse(w, http.StatusInternalServerError, err)
+		errors := validationRoute(db, resource, false, true)
+		if errors != nil {
+			status := http.StatusBadRequest
+			writeResponse(w, types.ErrorResponse{Cause: common.ErrorValidationFailed, Message: errors, Status: status}, status)
 			return
 		}
 
@@ -119,16 +119,16 @@ func (httphandler *Httphandler) ResourceHandler(router *mux.Router) {
 
 		trimStringFieldsResource(resource)
 
-		errors := validationRoute(db, resource, false, false)
-		if errors != nil {
-			status := http.StatusBadRequest
-			writeResponse(w, types.ErrorResponse{Cause: "validation-Failed", Message: errors, Status: status}, status)
+		err = preProcessResource(resource)
+		if err != nil {
+			makeErrorResponse(w, http.StatusInternalServerError, err)
 			return
 		}
 
-		err = preProcessResource(db, resource)
-		if err != nil {
-			makeErrorResponse(w, http.StatusInternalServerError, err)
+		errors := validationRoute(db, resource, false, false)
+		if errors != nil {
+			status := http.StatusBadRequest
+			writeResponse(w, types.ErrorResponse{Cause: common.ErrorValidationFailed, Message: errors, Status: status}, status)
 			return
 		}
 
@@ -232,18 +232,20 @@ func validationRoute(db *bolt.DB, resource *types.Resource, isFounctionInvokeRou
 
 	prepareResourceID(resource)
 
-	if isCreate {
+	if !isFounctionInvokeRoute {
+		if isCreate {
 
-		if checkRouteISAlreadyExists(db, resource) {
-			errors = append(errors, "route is already exists")
+			if checkRouteISAlreadyExists(db, resource) {
+				errors = append(errors, "route is already exists")
+			}
+
+		} else {
+
+			if !checkRouteISAlreadyExists(db, resource) {
+				errors = append(errors, "route is not found")
+			}
+
 		}
-
-	} else {
-
-		if !checkRouteISAlreadyExists(db, resource) {
-			errors = append(errors, "route is not found")
-		}
-
 	}
 
 	return errors
@@ -265,7 +267,7 @@ func checkRouteISAlreadyExists(db *bolt.DB, resource *types.Resource) bool {
 	return found
 }
 
-func preProcessResource(db *bolt.DB, resource *types.Resource) error {
+func preProcessResource(resource *types.Resource) error {
 
 	if !strings.HasPrefix(resource.URL, "/") {
 		resource.URL = "/" + resource.URL

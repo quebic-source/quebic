@@ -68,3 +68,6 @@ const LogStateDockerServiceStopped = "DOCKER_SERVICE_STOPPED"
 
 //LogStateDockerServiceStartFailed DOCKER_SERVICE_START_FAILED
 const LogStateDockerServiceStartFailed = "DOCKER_SERVICE_START_FAILED"
+
+//LogStateDeploymentFailed DEPLOYMENT_FAILED
+const LogStateDeploymentFailed = "DEPLOYMENT_FAILED"

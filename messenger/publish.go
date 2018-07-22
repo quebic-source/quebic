@@ -26,13 +26,18 @@ import (
 
 const defaultRequestTimeout = 40 * time.Second
 
+//Context publish handler current context
+type Context struct {
+	RequestID string //self reuest-id
+}
+
 //Publish publish
 func (messenger *Messenger) Publish(
 	eventID string,
 	payload interface{},
 	requestHeaders map[string]string,
-	successHandler func(message BaseEvent, statuscode int),
-	errHandler func(err string, statuscode int),
+	successHandler func(message BaseEvent, statuscode int, context Context),
+	errHandler func(err string, statuscode int, context Context),
 	requestTimeout time.Duration) (string, error) {
 
 	return messenger.publish(
@@ -53,8 +58,8 @@ func (messenger *Messenger) PublishBlocking(
 	eventID string,
 	payload interface{},
 	requestHeaders map[string]string,
-	successHandler func(message BaseEvent, statuscode int),
-	errHandler func(err string, statuscode int),
+	successHandler func(message BaseEvent, statuscode int, context Context),
+	errHandler func(err string, statuscode int, context Context),
 	requestTimeout time.Duration) (string, error) {
 
 	return messenger.publish(
@@ -77,8 +82,8 @@ func (messenger *Messenger) publish(
 	requestHeaders map[string]string,
 	statuscode int,
 	errorMessage string,
-	successHandler func(message BaseEvent, statuscode int),
-	errHandler func(err string, statuscode int),
+	successHandler func(message BaseEvent, statuscode int, context Context),
+	errHandler func(err string, statuscode int, context Context),
 	requestTimeout time.Duration,
 	blocking bool) (string, error) {
 
@@ -121,7 +126,6 @@ func (messenger *Messenger) publish(
 	waitForResponse := make(chan bool)
 	if successHandler != nil || errHandler != nil {
 
-		log.Printf("going to setup responseHandler for %s", requestID)
 		err := messenger.Subscribe(requestID, func(be BaseEvent) {
 
 			//reply
@@ -129,13 +133,13 @@ func (messenger *Messenger) publish(
 			statuscode := be.GetStatuscode()
 			if err == "" {
 
-				successHandler(be, statuscode)
+				successHandler(be, statuscode, Context{RequestID: requestID})
 				waitForResponse <- true
 
 			} else {
 
 				if errHandler != nil {
-					errHandler(err, statuscode)
+					errHandler(err, statuscode, Context{RequestID: requestID})
 				}
 
 				waitForResponse <- false
@@ -196,7 +200,7 @@ func wait(
 	requestID string,
 	waitForResponse chan bool,
 	requestTimeout time.Duration,
-	errHandler func(err string, statuscode int),
+	errHandler func(err string, statuscode int, context Context),
 ) {
 	//wait for response
 	select {
@@ -205,7 +209,7 @@ func wait(
 	case <-time.After(requestTimeout):
 		messenger.ReleseQueue(requestID)
 		if errHandler != nil {
-			errHandler(fmt.Sprintf("request timeout for %s", requestID), 500)
+			errHandler(fmt.Sprintf("request timeout for %s", requestID), 500, Context{RequestID: requestID})
 		}
 	}
 }
@@ -217,7 +221,7 @@ func (messenger *Messenger) setUpRequestTracker(requestID string) {
 		Log: types.Log{
 			Message: "request-tracker created",
 			Source:  messenger.AppID,
-			Time:    time.Now().String(),
+			Time:    time.Now().Format(common.DefaultTimeLayout),
 			Type:    "INFO",
 		},
 	}

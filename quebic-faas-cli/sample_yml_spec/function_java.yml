@@ -1,14 +1,19 @@
 function:
-  name: ms1
+  name: hello1
   source: /home/tharanga/my/quebic-faas/quebic-faas-hellofunction-java/target/hello-function-0.0.1-SNAPSHOT.jar
   handler: com.quebicfaas.examples.HelloFunction
   runtime: java
   events:
     - orders.OrderCreate
+  env:
+    - name: e1
+      value: v1
+    - name: e2
+      valuez: v2
 
 route:
-  requestMethod: POST
-  url: /users
+  requestMethod: GET
+  url: /hello1
   requestMapping:
     - eventAttribute: eID
       requestAttribute: id
@@ -19,4 +24,4 @@ route:
       headerAttribute: x-token
   headersToPass:
     - Authorization
-#  async: true
+  async: true

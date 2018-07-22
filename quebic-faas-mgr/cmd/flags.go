@@ -33,6 +33,9 @@ var eventBusManagementPassword string
 var apigatewayServerHost string
 var apigatewayServerPort int
 
+var mgrDashboardServerHost string
+var mgrDashboardServerPort int
+
 var deployment string
 
 var configSave bool
@@ -58,6 +61,9 @@ func setupFlags() {
 
 	rootCmd.PersistentFlags().StringVarP(&apigatewayServerHost, "apigateway-server-host", "", "", "apigateway-server-host")
 	rootCmd.PersistentFlags().IntVarP(&apigatewayServerPort, "apigateway-server-port", "", 0, "apigateway-server-port")
+
+	rootCmd.PersistentFlags().StringVarP(&mgrDashboardServerHost, "dashboard-server-host", "", "", "dashboard-server-host")
+	rootCmd.PersistentFlags().IntVarP(&mgrDashboardServerPort, "dashboard-server-port", "", 0, "dashboard-server-port")
 
 	rootCmd.PersistentFlags().StringVarP(&deployment, "deployment", "", "", "deployment")
 
@@ -121,6 +127,14 @@ func setFlagsToConfig() {
 
 	if apigatewayServerPort != 0 {
 		appConfig.APIGatewayConfig.ServerConfig.Port = apigatewayServerPort
+	}
+
+	if mgrDashboardServerHost != "" {
+		appConfig.MgrDashboardConfig.ServerConfig.Host = mgrDashboardServerHost
+	}
+
+	if mgrDashboardServerPort != 0 {
+		appConfig.MgrDashboardConfig.ServerConfig.Port = mgrDashboardServerPort
 	}
 
 	if deployment != "" {

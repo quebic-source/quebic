@@ -18,7 +18,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"quebic-faas/common"
 	_messenger "quebic-faas/messenger"
@@ -85,9 +84,9 @@ func (httphandler *Httphandler) healthCheckEndpointHandler(router *mux.Router) {
 
 	router.HandleFunc("/manage/health", func(w http.ResponseWriter, r *http.Request) {
 		if len(httphandler.AppStatusList) == 0 {
-			writeResponse(w, StatusResponse{Status: "UP"}, 200)
+			writeResponse(w, StatusResponse{Status: "UP"}, 200, nil)
 		} else {
-			writeResponse(w, StatusResponse{Status: httphandler.AppStatusList}, 500)
+			writeResponse(w, StatusResponse{Status: httphandler.AppStatusList}, 500, nil)
 		}
 	}).Methods("GET")
 
@@ -110,7 +109,7 @@ func (httphandler *Httphandler) requestTrackerHandler(router *mux.Router) {
 			common.EventRequestTrackerDataFetch,
 			requestID,
 			requestHeaders,
-			func(message _messenger.BaseEvent, status int) {
+			func(message _messenger.BaseEvent, status int, context _messenger.Context) {
 
 				rtMap := message.GetPayloadAsObject()
 				rtJSON, _ := json.Marshal(rtMap)
@@ -125,7 +124,7 @@ func (httphandler *Httphandler) requestTrackerHandler(router *mux.Router) {
 				makeSuccessResponse(w, rt.Response.Status, rt.Response.Message)
 
 			},
-			func(err string, statuscode int) {
+			func(err string, statuscode int, context _messenger.Context) {
 				makeErrorResponse(w, statuscode, fmt.Errorf(err))
 			},
 			time.Second*5,
@@ -169,24 +168,27 @@ func makeError(format string, err error) error {
 
 func makeSuccessResponse(w http.ResponseWriter, status int, message interface{}) {
 	successResponse := SuccessResponse{Status: status, Message: message}
-	writeResponse(w, &successResponse, status)
+	writeResponse(w, &successResponse, status, nil)
 }
 
 func makeErrorResponse(w http.ResponseWriter, status int, cause error) {
 	errorResponse := ErrorResponse{Status: status, Cause: cause.Error()}
-	writeResponse(w, &errorResponse, status)
+	writeResponse(w, &errorResponse, status, nil)
 }
 
-func makeErrorStrResponse(w http.ResponseWriter, status int, err string) {
-	log.Printf("error response status %v", status)
-	errorResponse := ErrorResponse{Status: status, Cause: err}
-	writeResponse(w, &errorResponse, status)
-}
+func writeResponse(w http.ResponseWriter, v interface{}, status int, headers map[string]string) {
 
-func writeResponse(w http.ResponseWriter, v interface{}, status int) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+
+	if headers != nil {
+		for k, v := range headers {
+			w.Header().Set(k, v)
+		}
+	}
+
 	w.WriteHeader(status)
 	if err := json.NewEncoder(w).Encode(v); err != nil {
 		makeErrorResponse(w, http.StatusInternalServerError, err)
 	}
+
 }

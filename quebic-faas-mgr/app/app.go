@@ -108,6 +108,7 @@ func (app *App) setupConfiguration() {
 		app.config.KubernetesConfig = savingConfig.KubernetesConfig
 		app.config.EventBusConfig = savingConfig.EventBusConfig
 		app.config.APIGatewayConfig = savingConfig.APIGatewayConfig
+		app.config.MgrDashboardConfig = savingConfig.MgrDashboardConfig
 		app.config.Deployment = savingConfig.Deployment
 
 	}
@@ -124,13 +125,14 @@ func (app *App) SaveConfiguration() {
 
 	//write default configurations
 	wrireConfigJSON, _ := yaml.Marshal(mgrconfig.SavingConfig{
-		Auth:             app.config.Auth,
-		ServerConfig:     app.config.ServerConfig,
-		DockerConfig:     app.config.DockerConfig,
-		EventBusConfig:   app.config.EventBusConfig,
-		APIGatewayConfig: app.config.APIGatewayConfig,
-		KubernetesConfig: app.config.KubernetesConfig,
-		Deployment:       app.config.Deployment,
+		Auth:               app.config.Auth,
+		ServerConfig:       app.config.ServerConfig,
+		DockerConfig:       app.config.DockerConfig,
+		EventBusConfig:     app.config.EventBusConfig,
+		APIGatewayConfig:   app.config.APIGatewayConfig,
+		MgrDashboardConfig: app.config.MgrDashboardConfig,
+		KubernetesConfig:   app.config.KubernetesConfig,
+		Deployment:         app.config.Deployment,
 	})
 
 	//write default configurations into config file
@@ -211,6 +213,16 @@ func (app *App) setupManagerComponents() {
 		log.Fatalf("apigateway setup failed : %v", err)
 	}
 
+	//mgr-dashboard
+	err = components.MgrDashboardSetup(&app.config)
+	if err != nil {
+		log.Printf("mgr-dashboard setup failed")
+		log.Printf("%v", err)
+	} else {
+		mgrDashboardAddress := "127.0.0.1" + ":" + common.IntToStr(app.config.MgrDashboardConfig.ServerConfig.Port)
+		log.Printf("quebic-faas-dashboard running on %s\n", mgrDashboardAddress)
+	}
+
 }
 
 func (app *App) setupMessenger() {
@@ -231,10 +243,6 @@ func (app *App) setupApigatewayDdataFetchListener() {
 	messenger := app.messenger
 
 	err := messenger.Subscribe(common.EventApigatewayDataFetch, func(event _messenger.BaseEvent) {
-
-		//TODO Remove log
-		//authentication process need using assesskey
-		log.Printf("retrive accesskey : %s", event.GetHeaderData(common.HeaderAccessKey))
 
 		apigatewayData := types.ApigatewayData{}
 
@@ -330,15 +338,15 @@ func (app *App) setUpHTTPHandlers() {
 		loggerUtil,
 		deployment)
 
-	apigatewayAddress := app.config.APIGatewayConfig.ServerConfig.Host + ":" + common.IntToStr(app.config.APIGatewayConfig.ServerConfig.Port)
-	address := app.config.ServerConfig.Host + ":" + common.IntToStr(app.config.ServerConfig.Port)
+	address := "127.0.0.1" + ":" + common.IntToStr(app.config.ServerConfig.Port)
 
-	log.Printf("quebic-faas-apigateway running : %s\n", apigatewayAddress)
-	log.Printf("quebic-faas-manager running : %s\n", address)
+	log.Printf("quebic-faas-manager running on %s\n", address)
 
 	allowedOrigins := handlers.AllowedOrigins([]string{"*"})
+	allowedMethods := handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "OPTIONS"})
+	allowedHeaders := handlers.AllowedHeaders([]string{"Content-Type"})
 
-	err := http.ListenAndServe(address, handlers.CORS(allowedOrigins)(router))
+	err := http.ListenAndServe(address, handlers.CORS(allowedOrigins, allowedMethods, allowedHeaders)(router))
 	if err != nil {
 		log.Fatalf("quebic-faas-manager failed. error : %v", err)
 	}

@@ -16,6 +16,7 @@ package httphandler
 
 import (
 	"net/http"
+	"quebic-faas/common"
 	"quebic-faas/messenger"
 	"quebic-faas/types"
 	"strconv"
@@ -69,18 +70,18 @@ func (httphandler *Httphandler) eventInvoke(w http.ResponseWriter, r *http.Reque
 			resource.Event,
 			payload,
 			requestHeaders,
-			func(message messenger.BaseEvent, statuscode int) {
+			func(message messenger.BaseEvent, statuscode int, context messenger.Context) {
 
 				if statuscode == 0 {
 					statuscode = resource.SuccessResponseStatus
 				}
 
-				makeSuccessResponse(w, statuscode, message.GetPayloadAsObject())
+				makeAPIGatewaySuccessResponse(w, statuscode, message.GetPayloadAsObject(), context.RequestID)
 
 			},
-			func(message string, statuscode int) {
+			func(message string, statuscode int, context messenger.Context) {
 
-				makeErrorStrResponse(w, statuscode, message)
+				makeAPIGatewayErrorResponse(w, statuscode, message, context.RequestID)
 
 			},
 			requestTimeout,
@@ -106,7 +107,7 @@ func (httphandler *Httphandler) eventInvoke(w http.ResponseWriter, r *http.Reque
 			return
 		}
 
-		makeSuccessResponse(w, 200, RequestTrackerResponse{RequestID: requestID})
+		makeAPIGatewaySuccessResponse(w, 200, RequestTrackerResponse{RequestID: requestID}, requestID)
 
 	}
 
@@ -141,4 +142,20 @@ func (httphandler *Httphandler) processForHeaderMapping(r *http.Request, mapping
 		payload[mappingTemplate.EventAttribute] = matchedHeaderValue
 	}
 
+}
+
+func makeAPIGatewaySuccessResponse(w http.ResponseWriter, status int, message interface{}, requestID string) {
+	successResponse := SuccessResponse{Status: status, Message: message}
+	writeResponse(w, &successResponse, status, prepareAPIGatewayHeaders(requestID))
+}
+
+func makeAPIGatewayErrorResponse(w http.ResponseWriter, status int, err string, requestID string) {
+	errorResponse := ErrorResponse{Status: status, Cause: err}
+	writeResponse(w, &errorResponse, status, prepareAPIGatewayHeaders(requestID))
+}
+
+func prepareAPIGatewayHeaders(requestID string) map[string]string {
+	header := make(map[string]string)
+	header[common.HeaderRequestID] = requestID
+	return header
 }

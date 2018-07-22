@@ -41,3 +41,12 @@ const RabbitmqManagementUserName = "guest"
 
 //RabbitmqManagementPassword rabbit
 const RabbitmqManagementPassword = "guest"
+
+//MgrDashboardPort mgr-dashboard port
+const MgrDashboardPort = 8000
+
+//EventBoxServerPort eventbox server port
+const EventBoxServerPort = 8080
+
+//EventBoxDBServerPort eventbox-db server port
+const EventBoxDBServerPort = 27017

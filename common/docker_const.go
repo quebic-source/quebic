@@ -26,3 +26,9 @@ const DockerServiceApigateway = "quebic-faas-apigateway"
 const ApigatewayImage = "quebicdocker/quebic-faas-apigateway:1.0.0"
 
 const EventbusImage = "rabbitmq:3.7-management-alpine"
+
+const MgrDashboardImage = "quebicdocker/quebic-faas-mgr-dashboard:0.1.0"
+
+const EventBoxImage = "quebicdocker/quebic-eventbox:0.1.0"
+
+const EventBoxDBImage = "mongo"

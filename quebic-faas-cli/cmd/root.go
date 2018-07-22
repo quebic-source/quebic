@@ -34,6 +34,8 @@ func setupCmds() {
 	rootCmd.AddCommand(routeCmd)
 	rootCmd.AddCommand(requestTrackerCmd)
 	rootCmd.AddCommand(mgrCompCmd)
+	rootCmd.AddCommand(apigatewayCmd)
+	rootCmd.AddCommand(eventboxCmd)
 	rootCmd.AddCommand(configCmd)
 }
 

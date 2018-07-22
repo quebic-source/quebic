@@ -46,7 +46,7 @@ func AddFunctionDockerImageID(db *bolt.DB, function *types.Function, dockerImage
 }
 
 //AddFunctionLog add function log
-func AddFunctionLog(db *bolt.DB, function *types.Function, log types.EntityLog) error {
+func AddFunctionLog(db *bolt.DB, function *types.Function, log types.EntityLog, status string) error {
 
 	log.Time = time.Now().String()
 
@@ -66,5 +66,6 @@ func AddFunctionLog(db *bolt.DB, function *types.Function, log types.EntityLog) 
 	}
 
 	function.Log = log
+	function.Status = status
 	return Save(db, function)
 }

@@ -16,3 +16,6 @@ package common
 
 //HeaderAccessKey header
 const HeaderAccessKey = "accesskey"
+
+//HeaderRequestID header
+const HeaderRequestID = "request-id"
