@@ -5,6 +5,11 @@ function:
   handler: function_2.helloFunction
   runtime: nodejs
   replicas: 1
+  life:
+    awake: request
+    idleState:
+      timeout: 60
+      timeunit: seconds
   events:
     - products.ProductCreate
     - products.ProductGetByID

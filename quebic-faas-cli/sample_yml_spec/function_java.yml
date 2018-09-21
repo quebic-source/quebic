@@ -3,6 +3,11 @@ function:
   source: /home/tharanga/my/quebic-faas/quebic-faas-hellofunction-java/target/hello-function-0.0.1-SNAPSHOT.jar
   handler: com.quebicfaas.examples.HelloFunction
   runtime: java
+  life:
+    awake: request
+    idleState:
+      timeout: 60
+      timeunit: seconds
   events:
     - orders.OrderCreate
   env:
@@ -24,4 +29,4 @@ route:
       headerAttribute: x-token
   headersToPass:
     - Authorization
-  async: true
+#  async: true

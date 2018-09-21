@@ -4,6 +4,11 @@ function:
   source: /home/tharanga/my/quebic-faas/quebic-faas-container-python/test/sample_handlers/package/package.tar.gz
   handler: handler.test_handler_1
   runtime: python_2.7
+  life:
+    awake: request
+    idleState:
+      timeout: 60
+      timeunit: seconds
   replicas: 1
   events:
     - test.Receiver

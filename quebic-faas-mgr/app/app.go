@@ -28,8 +28,8 @@ import (
 	dao "quebic-faas/quebic-faas-mgr/dao"
 	"quebic-faas/quebic-faas-mgr/db"
 	dep "quebic-faas/quebic-faas-mgr/deployment"
-	"quebic-faas/quebic-faas-mgr/deployment/docker_deployment"
 	"quebic-faas/quebic-faas-mgr/deployment/kube_deployment"
+	"quebic-faas/quebic-faas-mgr/function/function_util"
 	"quebic-faas/quebic-faas-mgr/httphandler"
 	"quebic-faas/quebic-faas-mgr/logger"
 	"quebic-faas/types"
@@ -73,6 +73,9 @@ func (app *App) Start() {
 
 	//setup manager components
 	app.setupManagerComponents()
+
+	//setup functions
+	app.setupFunctions()
 
 	//setup router
 	app.router = mux.NewRouter()
@@ -156,31 +159,13 @@ func (app *App) setupAdminUser() {
 
 func (app *App) setupDeployment() {
 
-	deployment := app.config.Deployment
-
-	if deployment == mgrconfig.Deployment_Docker {
-
-		dockerDeployment := docker_deployment.Deployment{
-			Config: docker_deployment.Config{
-				NetworkName: common.DockerNetworkID,
-			},
-		}
-
-		app.deployment = dockerDeployment
-
-	} else if deployment == mgrconfig.Deployment_Kubernetes {
-
-		kubeDeployment := kube_deployment.Deployment{
-			Config: kube_deployment.Config{
-				ConfigPath: app.config.KubernetesConfig.ConfigPath,
-			},
-		}
-
-		app.deployment = kubeDeployment
-
-	} else {
-		log.Fatalf("deployment setup failed : %s not support", deployment)
+	kubeDeployment := kube_deployment.Deployment{
+		Config: kube_deployment.Config{
+			ConfigPath: app.config.KubernetesConfig.ConfigPath,
+		},
 	}
+
+	app.deployment = kubeDeployment
 
 	err := app.deployment.Init()
 	if err != nil {
@@ -315,6 +300,35 @@ func (app *App) setupLogger() {
 
 	app.loggerUtil = loggerUtil
 
+}
+
+func (app *App) setupFunctions() {
+
+	appConfig := app.config
+	db := app.db
+	messenger := app.messenger
+	deployment := app.deployment
+
+	err := dao.GetAll(db, &types.Function{}, func(k, v []byte) error {
+
+		function := &types.Function{}
+		json.Unmarshal(v, function)
+
+		_, err := function_util.FunctionDeploy(
+			appConfig,
+			deployment,
+			messenger,
+			function)
+		if err != nil {
+			log.Printf("unable to deploy function %s. cause : %v\n", function.Name, err)
+		}
+
+		return nil
+
+	})
+	if err != nil {
+		log.Fatalf("unable to setup functions %v\n", err)
+	}
 }
 
 //GetDB get app db connection

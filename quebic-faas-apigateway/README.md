@@ -5,6 +5,6 @@
 ##### CGO_ENABLED=0 GOOS=linux go build -a -ldflags '-extldflags "-static"' .
 
 ## apigateway docker build
-##### sudo docker build --no-cache -t quebicdocker/quebic-faas-apigateway:1.0.0 .
+##### sudo docker build --no-cache -t quebicdocker/quebic-faas-apigateway:0.1.0 .
 ##### sudo docker login
-##### sudo docker push quebicdocker/quebic-faas-apigateway:1.0.0
+##### sudo docker push quebicdocker/quebic-faas-apigateway:0.1.0

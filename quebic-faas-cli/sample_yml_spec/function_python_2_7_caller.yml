@@ -5,6 +5,11 @@ function:
   handler: index.handler
   runtime: python_2.7
   replicas: 1
+  life:
+    awake: request
+    idleState:
+      timeout: 60
+      timeunit: seconds
   events:
     - test.Caller
   env:

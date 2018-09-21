@@ -12,23 +12,17 @@
 //    See the License for the specific language governing permissions and
 //    limitations under the License.
 
-package common
+package function_life_controller
 
-//DockerNetworkID network id in service
-const DockerNetworkID = "quebic-faas-network"
+import (
+	"quebic-faas/quebic-faas-mgr/function/function_runtime"
+	quebicFaasTypes "quebic-faas/types"
+)
 
-//DockerServiceEventBus network id in service
-const DockerServiceEventBus = "quebic-faas-eventbus"
+func FunctionRegisterForAwake(
+	functionDTO quebicFaasTypes.FunctionDTO,
+	functionRunTime function_runtime.FunctionRunTime) (string, error) {
 
-//DockerServiceApigateway network id in service
-const DockerServiceApigateway = "quebic-faas-apigateway"
+	return "", nil
 
-const ApigatewayImage = "quebicdocker/quebic-faas-apigateway:0.1.0"
-
-const EventbusImage = "rabbitmq:3.7-management-alpine"
-
-const MgrDashboardImage = "quebicdocker/quebic-faas-mgr-dashboard:0.1.0"
-
-const EventBoxImage = "quebicdocker/quebic-eventbox:0.1.0"
-
-const EventBoxDBImage = "mongo"
+}

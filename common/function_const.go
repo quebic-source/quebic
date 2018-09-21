@@ -39,17 +39,29 @@ const KubeStatusTrue = "True"
 //KubeStatusFalse False
 const KubeStatusFalse = "False"
 
-//FunctionStatusRunning Running
-const FunctionStatusRunning = "Running"
+//KubeStatusUnknown Unknown
+const KubeStatusUnknown = "Unknown"
 
-//FunctionStatusPending Pending
-const FunctionStatusPending = "Pending"
+//FunctionLifeAwakeTypeDefault default
+const FunctionLifeAwakeTypeDefault = "default"
 
-//FunctionStatusNotFound NotFound
-const FunctionStatusNotFound = "NotFound"
+//FunctionLifeAwakeTypeRequest request
+const FunctionLifeAwakeTypeRequest = "request"
 
-//FunctionStatusFailed Failed
-const FunctionStatusFailed = "Failed"
+//FunctionLifeUnitSeconds seconds
+const FunctionLifeUnitSeconds = "seconds"
+
+//FunctionLifeUnitMinutes minutes
+const FunctionLifeUnitMinutes = "minutes"
+
+//FunctionLifeUnitHours hours
+const FunctionLifeUnitHours = "hours"
+
+//FunctionLifeMinAgeMinutes minimum minutes
+const FunctionLifeMinAgeMinutes = 2
+
+//FunctionLifeMinAgeSeconds minimum seconds
+const FunctionLifeMinAgeSeconds = 60 * FunctionLifeMinAgeMinutes
 
 //RuntimeValidate runtime validate
 func RuntimeValidate(runtime Runtime) bool {
@@ -65,16 +77,5 @@ func RuntimeValidate(runtime Runtime) bool {
 	}
 
 	return false
-
-}
-
-//GetFunctionStatus map kube status-value to quebic status-value
-func GetFunctionStatus(kubeStatus string) string {
-
-	if kubeStatus == KubeStatusTrue {
-		return FunctionStatusRunning
-	}
-
-	return FunctionStatusPending
 
 }

@@ -38,6 +38,7 @@ type Details struct {
 	Envkeys     map[string]string
 	Host        string
 	PortConfigs []PortConfig
+	Pods        []Pod
 	Status      string
 }
 
@@ -56,6 +57,11 @@ type PortConfig struct {
 	Protocol   PortProtocol
 	Port       Port //expose port
 	TargetPort Port //container port
+}
+
+//Pod pod spec
+type Pod struct {
+	Name string
 }
 
 //Port outside exposed port

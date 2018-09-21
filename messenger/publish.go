@@ -24,7 +24,7 @@ import (
 	"github.com/streadway/amqp"
 )
 
-const defaultRequestTimeout = 40 * time.Second
+const defaultRequestTimeout = 2 * time.Hour
 
 //Context publish handler current context
 type Context struct {
@@ -35,7 +35,7 @@ type Context struct {
 func (messenger *Messenger) Publish(
 	eventID string,
 	payload interface{},
-	requestHeaders map[string]string,
+	requestHeaders map[string]interface{},
 	successHandler func(message BaseEvent, statuscode int, context Context),
 	errHandler func(err string, statuscode int, context Context),
 	requestTimeout time.Duration) (string, error) {
@@ -57,7 +57,7 @@ func (messenger *Messenger) Publish(
 func (messenger *Messenger) PublishBlocking(
 	eventID string,
 	payload interface{},
-	requestHeaders map[string]string,
+	requestHeaders map[string]interface{},
 	successHandler func(message BaseEvent, statuscode int, context Context),
 	errHandler func(err string, statuscode int, context Context),
 	requestTimeout time.Duration) (string, error) {
@@ -79,7 +79,7 @@ func (messenger *Messenger) PublishBlocking(
 func (messenger *Messenger) publish(
 	eventID string,
 	payload interface{},
-	requestHeaders map[string]string,
+	requestHeaders map[string]interface{},
 	statuscode int,
 	errorMessage string,
 	successHandler func(message BaseEvent, statuscode int, context Context),
@@ -100,8 +100,10 @@ func (messenger *Messenger) publish(
 
 	baseEvent.setStatuscode(statuscode)
 
-	for k, v := range requestHeaders {
-		baseEvent.setHeaderData(k, v)
+	if requestHeaders != nil {
+		for k, v := range requestHeaders {
+			baseEvent.setHeaderData(k, v)
+		}
 	}
 
 	//eventID become the routingKey

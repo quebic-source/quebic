@@ -100,7 +100,7 @@ func (httphandler *Httphandler) requestTrackerHandler(router *mux.Router) {
 		requestID := params["requestID"]
 
 		managerAccessKey := httphandler.Config.Auth.Accesstoken
-		requestHeaders := make(map[string]string)
+		requestHeaders := make(map[string]interface{})
 		requestHeaders[common.HeaderAccessKey] = managerAccessKey
 
 		messenger := httphandler.Messenger

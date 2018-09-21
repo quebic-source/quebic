@@ -144,16 +144,29 @@ func (kubeDeployment Deployment) ListByName(name string) (deployment.Details, er
 		return deployment.Details{}, err
 	}
 
-	conditionStatus := common.FunctionStatusFailed
+	conditionStatus := common.KubeStatusFalse
 	conditions := deploymentDetails.Status.Conditions
 	if len(conditions) > 0 {
 		for _, spec := range conditions {
 			if spec.Type == "Available" {
-				conditionStatus = common.GetFunctionStatus(string(spec.Status))
+				conditionStatus = string(spec.Status)
 				break
 			}
 		}
 	}
+
+	//pod details
+	/*deploymentLabels := labels.Set(deploymentDetails.Labels).AsSelector().String()
+	podSpecs, err := clientset.Core().Pods(kubeNamespace).List(metav1.ListOptions{
+		LabelSelector: deploymentLabels,
+	})
+	if err != nil {
+		return deployment.Details{}, err
+	}
+	var pods []deployment.Pod
+	for _, pod := range podSpecs.Items {
+		pods = append(pods, deployment.Pod{Name: pod.Name})
+	}*/
 
 	//service details
 	service := clientset.Core().Services(kubeNamespace)

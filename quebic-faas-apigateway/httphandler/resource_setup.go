@@ -15,6 +15,7 @@
 package httphandler
 
 import (
+	"log"
 	"net/http"
 	"quebic-faas/common"
 	"quebic-faas/messenger"
@@ -50,7 +51,7 @@ func (httphandler *Httphandler) eventInvoke(w http.ResponseWriter, r *http.Reque
 	}
 
 	//user's headers
-	requestHeaders := make(map[string]string)
+	requestHeaders := make(map[string]interface{})
 	for _, header := range resource.HeadersToPass {
 		requestHeaders[header] = r.Header.Get(header)
 	}
@@ -87,6 +88,9 @@ func (httphandler *Httphandler) eventInvoke(w http.ResponseWriter, r *http.Reque
 			requestTimeout,
 		)
 		if err != nil {
+
+			log.Printf("internal server error, cause : %s\n", err.Error())
+
 			makeErrorResponse(w, http.StatusInternalServerError, err)
 			return
 		}
@@ -103,6 +107,9 @@ func (httphandler *Httphandler) eventInvoke(w http.ResponseWriter, r *http.Reque
 		)
 
 		if err != nil {
+
+			log.Printf("internal server error, cause : %s\n", err.Error())
+
 			makeErrorResponse(w, http.StatusInternalServerError, err)
 			return
 		}

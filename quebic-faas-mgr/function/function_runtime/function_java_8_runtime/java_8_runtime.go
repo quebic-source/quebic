@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"quebic-faas/common"
-	"quebic-faas/quebic-faas-mgr/function_util/function_common"
+	"quebic-faas/quebic-faas-mgr/function/function_common"
 	"quebic-faas/types"
 )
 

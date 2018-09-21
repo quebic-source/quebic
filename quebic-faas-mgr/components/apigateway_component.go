@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"log"
 	"quebic-faas/common"
+	"quebic-faas/messenger"
 	"quebic-faas/quebic-faas-mgr/config"
 	dep "quebic-faas/quebic-faas-mgr/deployment"
 
@@ -45,6 +46,16 @@ func ApigatewaySetup(appConfig *config.AppConfig, deployment dep.Deployment) err
 
 	envkeys := make(map[string]string)
 	envkeys[common.EnvKeyAPIGateWayAccessKey] = accessKeyUUID.String()
+
+	//eventbus
+	eventBusConfig := appConfig.EventBusConfig
+	envkeys[common.EnvKey_rabbitmq_exchange] = messenger.Exchange
+	envkeys[common.EnvKey_rabbitmq_host] = eventBusConfig.AMQPHost
+	envkeys[common.EnvKey_rabbitmq_port] = common.IntToStr(eventBusConfig.AMQPPort)
+	envkeys[common.EnvKey_rabbitmq_management_username] = eventBusConfig.ManagementUserName
+	envkeys[common.EnvKey_rabbitmq_management_password] = eventBusConfig.ManagementPassword
+	envkeys[common.EnvKey_eventConst_eventPrefixUserDefined] = common.EventPrefixUserDefined
+	envkeys[common.EnvKey_eventConst_eventLogListener] = common.EventRequestTracker
 
 	deploymentSpec := dep.Spec{
 		Name:        componentID,

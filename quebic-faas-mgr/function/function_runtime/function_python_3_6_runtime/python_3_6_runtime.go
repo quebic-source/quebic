@@ -1,10 +1,10 @@
-package function_python_2_7_runtime
+package function_python_3_6_runtime
 
 import (
 	"fmt"
 	"path/filepath"
 	"quebic-faas/common"
-	"quebic-faas/quebic-faas-mgr/function_util/function_common"
+	"quebic-faas/quebic-faas-mgr/function/function_common"
 	"quebic-faas/types"
 	"strings"
 )
@@ -23,7 +23,7 @@ type FunctionRunTime struct {
 }
 
 func (functionRunTime FunctionRunTime) RuntimeType() string {
-	return common.RuntimePython_2_7
+	return common.RuntimePython_3_6
 }
 
 func (functionRunTime FunctionRunTime) SetFunctionHandler(
@@ -71,7 +71,7 @@ func (functionRunTime FunctionRunTime) SetFunctionHandler(
 }
 
 func (functionRunTime FunctionRunTime) GetFunctionDockerFileContent() string {
-	return common.DockerFileContent_Python_2_7
+	return common.DockerFileContent_Python_3_6
 }
 
 func (functionRunTime FunctionRunTime) GetTargetFunctionArtifactPath(functionID string) string {

@@ -155,6 +155,7 @@ type Function struct {
 	EnvironmentVariables []EnvironmentVariable `json:"env" yaml:"env"`
 	SecretKey            string                `json:"secretKey"`
 	Route                string                `json:"route"`
+	Life                 FunctionLife          `json:"life"`
 	Log                  EntityLog             `json:"log"`
 	ModifiedAt           string                `json:"modifiedAt" yaml:"modifiedAt"` //modified time
 	Status               string                `json:"status" yaml:"status"`
@@ -299,4 +300,16 @@ type RequestTrackerMessage struct {
 	Response  RequestTrackerResponse `json:"response"`
 	Log       Log                    `json:"log"`
 	Completed bool                   `json:"completed"`
+}
+
+//FunctionLife function's life controller
+type FunctionLife struct {
+	Awake     string            `json:"awake" yaml:"awake"` //eg: default or request
+	IdleState FunctionIdleState `json:"idleState" yaml:"idleState"`
+}
+
+//FunctionIdleState function's idle state
+type FunctionIdleState struct {
+	Timeunit string `json:"timeunit" yaml:"timeunit"` //eg: seconds, minutes, hours
+	Timeout  int    `json:"timeout" yaml:"timeout"`   //eg: 45
 }

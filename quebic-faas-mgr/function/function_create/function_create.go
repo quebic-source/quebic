@@ -19,8 +19,8 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
-	"quebic-faas/quebic-faas-mgr/function_util/function_common"
-	"quebic-faas/quebic-faas-mgr/function_util/function_runtime"
+	"quebic-faas/quebic-faas-mgr/function/function_common"
+	"quebic-faas/quebic-faas-mgr/function/function_runtime"
 	quebicFaasTypes "quebic-faas/types"
 )
 

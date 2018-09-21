@@ -39,17 +39,19 @@ const EnvKeyFunctionContainerSecret = "secret"
 
 //Used by function docker service
 const EnvKey_appID = "appID"
-const EnvKey_rabbitmq_exchange = "rabbitmq.exchange"
-const EnvKey_rabbitmq_host = "rabbitmq.host"
-const EnvKey_rabbitmq_port = "rabbitmq.port"
-const EnvKey_rabbitmq_management_username = "rabbitmq.management.username"
-const EnvKey_rabbitmq_management_password = "rabbitmq.management.password"
-const EnvKey_eventConst_eventPrefixUserDefined = "eventConst.eventPrefixUserDefined"
-const EnvKey_eventConst_eventLogListener = "eventConst.eventLogListener"
+const EnvKey_rabbitmq_exchange = "rabbitmq_exchange"
+const EnvKey_rabbitmq_host = "rabbitmq_host"
+const EnvKey_rabbitmq_port = "rabbitmq_port"
+const EnvKey_rabbitmq_management_username = "rabbitmq_management_username"
+const EnvKey_rabbitmq_management_password = "rabbitmq_management_password"
+const EnvKey_eventConst_eventPrefixUserDefined = "eventConst_eventPrefixUserDefined"
+const EnvKey_eventConst_eventPrefixFunctionAwake = "eventConst_eventPrefixFunctionAwake"
+const EnvKey_eventConst_eventLogListener = "eventConst_eventLogListener"
 
 const EnvKey_events = "events"
 const EnvKey_artifactLocation = "artifactLocation"
 const EnvKey_functionPath = "functionPath"
+const EnvKey_functionAge = "functionAge"
 
 //EventBox
 const EnvKey_mongo_host = "mongo.host"

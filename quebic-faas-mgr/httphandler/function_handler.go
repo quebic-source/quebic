@@ -20,15 +20,15 @@ import (
 	"log"
 	"net/http"
 	"quebic-faas/common"
-	"quebic-faas/messenger"
+	quebic_messenger "quebic-faas/messenger"
 	"quebic-faas/quebic-faas-mgr/config"
 	"quebic-faas/quebic-faas-mgr/dao"
-	"quebic-faas/quebic-faas-mgr/function_util"
-	"quebic-faas/quebic-faas-mgr/function_util/function_runtime"
-	"quebic-faas/quebic-faas-mgr/function_util/function_runtime/function_java_8_runtime"
-	"quebic-faas/quebic-faas-mgr/function_util/function_runtime/function_nodejs_runtime"
-	"quebic-faas/quebic-faas-mgr/function_util/function_runtime/function_python_2_7_runtime"
-	"quebic-faas/quebic-faas-mgr/function_util/function_runtime/function_python_3_6_runtime"
+	"quebic-faas/quebic-faas-mgr/function/function_runtime"
+	"quebic-faas/quebic-faas-mgr/function/function_runtime/function_java_8_runtime"
+	"quebic-faas/quebic-faas-mgr/function/function_runtime/function_nodejs_runtime"
+	"quebic-faas/quebic-faas-mgr/function/function_runtime/function_python_2_7_runtime"
+	"quebic-faas/quebic-faas-mgr/function/function_runtime/function_python_3_6_runtime"
+	"quebic-faas/quebic-faas-mgr/function/function_util"
 	"quebic-faas/types"
 	"strings"
 	"time"
@@ -48,6 +48,7 @@ func (httphandler *Httphandler) FunctionHandler(router *mux.Router) {
 	db := httphandler.db
 	appConfig := httphandler.config
 	deployment := httphandler.deployment
+	messenger := httphandler.messenger
 
 	router.HandleFunc("/functions", func(w http.ResponseWriter, r *http.Request) {
 
@@ -76,7 +77,7 @@ func (httphandler *Httphandler) FunctionHandler(router *mux.Router) {
 			return
 		}
 
-		saveFunctionDTO(w, r, db, functionDTO, appConfig, deployment, true)
+		saveFunctionDTO(w, r, db, functionDTO, appConfig, deployment, messenger, true)
 
 	}).Methods("POST")
 
@@ -89,7 +90,7 @@ func (httphandler *Httphandler) FunctionHandler(router *mux.Router) {
 			return
 		}
 
-		saveFunctionDTO(w, r, db, functionDTO, appConfig, deployment, false)
+		saveFunctionDTO(w, r, db, functionDTO, appConfig, deployment, messenger, false)
 
 	}).Methods("PUT")
 
@@ -130,6 +131,7 @@ func (httphandler *Httphandler) FunctionHandler(router *mux.Router) {
 		_, err = function_util.FunctionDeploy(
 			appConfig,
 			deployment,
+			messenger,
 			function)
 		if err != nil {
 			makeErrorResponse(w, http.StatusInternalServerError, err)
@@ -177,6 +179,7 @@ func (httphandler *Httphandler) FunctionHandler(router *mux.Router) {
 		_, err = function_util.FunctionDeploy(
 			appConfig,
 			deployment,
+			messenger,
 			function)
 		if err != nil {
 			makeErrorResponse(w, http.StatusInternalServerError, err)
@@ -209,7 +212,7 @@ func (httphandler *Httphandler) FunctionHandler(router *mux.Router) {
 
 		functionEventID := prepareFunctionEvent(function.Name)
 		payload := functionTest.Payload
-		requestHeaders := make(map[string]string)
+		requestHeaders := make(map[string]interface{})
 
 		const defaultRequestTimeout = 40 * time.Second
 
@@ -217,13 +220,13 @@ func (httphandler *Httphandler) FunctionHandler(router *mux.Router) {
 			functionEventID,
 			payload,
 			requestHeaders,
-			func(message messenger.BaseEvent, statuscode int, context messenger.Context) {
+			func(message quebic_messenger.BaseEvent, statuscode int, context quebic_messenger.Context) {
 
 				successResponse := types.FunctionTestResponse{Status: statuscode, Message: message.GetPayloadAsObject()}
 				writeResponse(w, successResponse, http.StatusOK)
 
 			},
-			func(message string, statuscode int, context messenger.Context) {
+			func(message string, statuscode int, context quebic_messenger.Context) {
 
 				errorResponse := types.FunctionTestResponse{Status: statuscode, Message: message}
 				writeResponse(w, errorResponse, http.StatusOK)
@@ -417,6 +420,7 @@ func saveFunctionDTO(
 	functionDTO *types.FunctionDTO,
 	appConfig config.AppConfig,
 	deployment dep.Deployment,
+	messenger quebic_messenger.Messenger,
 	isCreate bool) {
 
 	function := &functionDTO.Function
@@ -443,11 +447,12 @@ func saveFunctionDTO(
 	_, err = function_util.FunctionDeploy(
 		appConfig,
 		deployment,
+		messenger,
 		function)
 	if err != nil {
 
 		entityLog := types.EntityLog{State: common.LogStateDeploymentFailed, Message: err.Error()}
-		dao.AddFunctionLog(db, function, entityLog, common.FunctionStatusFailed)
+		dao.AddFunctionLog(db, function, entityLog, common.KubeStatusFalse)
 
 		makeErrorResponse(w, http.StatusInternalServerError, err)
 		return
@@ -740,7 +745,7 @@ func preProcessFunction(
 	function.Events = append(function.Events, prepareFunctionEvent(function.GetID()))
 
 	//Default function status
-	function.Status = common.FunctionStatusPending
+	function.Status = common.KubeStatusFalse
 
 	return nil
 }
@@ -757,7 +762,7 @@ func postProcessFunction(
 	function := &functionDTO.Function
 
 	entityLog := types.EntityLog{State: common.LogStateSaved}
-	dao.AddFunctionLog(db, function, entityLog, common.FunctionStatusPending)
+	dao.AddFunctionLog(db, function, entityLog, common.KubeStatusFalse)
 
 	authConfig, err := dockerConfig.GetDockerAuthConfig()
 	if err != nil {
@@ -770,13 +775,13 @@ func postProcessFunction(
 
 	if err != nil {
 		entityLog = types.EntityLog{State: common.LogStateDockerImageCreatingFailed, Message: err.Error()}
-		dao.AddFunctionLog(db, function, entityLog, common.FunctionStatusFailed)
+		dao.AddFunctionLog(db, function, entityLog, common.KubeStatusFalse)
 		return err
 	}
 
 	dao.AddFunctionDockerImageID(db, function, dockerImageID)
 	entityLog = types.EntityLog{State: common.LogStateDockerImageCreated, Message: dockerImageID}
-	dao.AddFunctionLog(db, function, entityLog, common.FunctionStatusPending)
+	dao.AddFunctionLog(db, function, entityLog, common.KubeStatusFalse)
 
 	function.DockerImageID = dockerImageID
 

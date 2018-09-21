@@ -10,7 +10,8 @@ Quebic is a framework for writing serverless functions to run on Kubernetes. Cur
 
 ## Contents
 * [Getting Started](#getting-started)
-* [Functions](#functions)
+* [Function Runtimes](#function-runtimes)
+* [Function Container](#function-container)
 * [Routing](#routing)
 * [Asynchronous invocation from API Gateway](#async)
 * [Logs](#logs)
@@ -44,7 +45,7 @@ Quebic is a framework for writing serverless functions to run on Kubernetes. Cur
  * You can use quebic cli or quebic-mgr-dashboard ui to communicate with quebic-manager.
  * By default quebic-mgr-dashboard ui is running [localhost:8000](http://localhost:8000)
  
-## <a name="functions"></a>Functions
+## <a name="function-runtimes"></a>Function Runtimes
 
 #### Python Runtime
 ##### [Example](https://github.com/quebic-source/quebic-sample-project)
@@ -323,6 +324,18 @@ headersToPass: # headers going to pass with event
 ##### Inspect Route details
 * quebic route inspect --name [route name]
 
+## <a name="function-container"></a>Function Container
+ * You can decide spin up mechanism of your function container. 
+ * By default container is started after create function spec. But you can config it to start by a request 
+ * You can decide idle timeout of the container.
+```yml
+function:
+  life:
+    awake: request
+    idleState:
+      timeout: 15
+      timeunit: minutes # or seconds or hours
+```
 
 ## <a name="async"></a> Asynchronous invocation from API Gateway
  * Quebic provides way to invoke function Asynchronous way from API Gateway.

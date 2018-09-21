@@ -1,10 +1,15 @@
 function:
-  name: hello2
+  name: app1
   version: 0.2.1
   source: /home/tharanga/my/quebic-faas/quebic-faas-container-nodejs/test_function/user_validate.js
   handler: index.validationHandle
   runtime: nodejs
   replicas: 1
+  life:
+    awake: request
+    idleState:
+      timeout: 40
+      timeunit: seconds
   events:
     - products.ProductCreate
     - products.ProductGetByID
@@ -17,7 +22,7 @@ function:
 
 route:
   requestMethod: GET
-  url: /hello2
+  url: /app1
   requestMapping:
     - eventAttribute: email
       requestAttribute: q

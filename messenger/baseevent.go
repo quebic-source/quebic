@@ -122,7 +122,7 @@ func (baseEvent *BaseEvent) GetError() string {
 }
 
 //SetHeaderData set requestHeaders
-func (baseEvent *BaseEvent) setHeaderData(key string, value string) {
+func (baseEvent *BaseEvent) setHeaderData(key string, value interface{}) {
 	baseEvent.headers[key] = value
 }
 
@@ -189,4 +189,9 @@ func (baseEvent *BaseEvent) setPayloadObject(payloadObject interface{}) {
 	jsonPayload, _ := json.Marshal(payloadObject)
 	baseEvent.eventPayload = jsonPayload
 
+}
+
+//GetHeaders get all headers
+func (baseEvent *BaseEvent) GetHeaders() map[string]interface{} {
+	return baseEvent.headers
 }

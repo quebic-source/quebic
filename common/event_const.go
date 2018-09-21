@@ -31,6 +31,9 @@ const EventPrefixExecutionACK = eventPrefix + EventJOIN + "execution-ack"
 //EventPrefixInternal execution ack prefix
 const EventPrefixInternal = eventPrefix + EventJOIN + "internal"
 
+//EventPrefixFunctionAwake quebic-faas-event.internal.function-awake.<function-name>
+const EventPrefixFunctionAwake = eventPrefix + EventJOIN + "function-awake"
+
 //ConsumerMgr consumer
 const ConsumerMgr = "quebic-faas-mgr"
 
@@ -42,6 +45,12 @@ const ConsumerRequestTracker = "quebic-faas-request-tracker"
 
 //ConsumerRequestTrackerDataFetch consumer data-fetch
 const ConsumerRequestTrackerDataFetch = "quebic-faas-request-tracker-data-fetch"
+
+//ConsumerFunctionRequestPrefix quebic-faas-function-awake-
+const ConsumerFunctionRequestPrefix = "quebic-faas-function-request-"
+
+//ConsumerFunctionAwakePrefix quebic-faas-function-awake-
+const ConsumerFunctionAwakePrefix = "quebic-faas-function-awake-"
 
 //EventApigatewayDataFetch used to share data between manage ans apigateway
 const EventApigatewayDataFetch = EventPrefixInternal + EventJOIN + "apigateway-data-fetch"

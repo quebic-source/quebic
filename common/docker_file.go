@@ -15,10 +15,10 @@
 package common
 
 //DockerFileContent_Java java docker file
-const DockerFileContent_Java = "FROM quebicdocker/quebic-faas-container-java:1.0.0\nADD function.jar /app/function.jar\nARG access_key\nENV access_key $access_key\n"
+const DockerFileContent_Java = "FROM quebicdocker/quebic-faas-container-java:0.1.0\nADD function.jar /app/function.jar\nARG access_key\nENV access_key $access_key\n"
 
 //DockerFileContent_Java java docker file
-const DockerFileContent_NodeJS = "FROM quebicdocker/quebic-faas-container-nodejs:1.0.0\nADD function_handler.tar /app/function_handler/\nARG access_key\nENV access_key $access_key\n"
+const DockerFileContent_NodeJS = "FROM quebicdocker/quebic-faas-container-nodejs:0.1.0\nADD function_handler.tar /app/function_handler/\nARG access_key\nENV access_key $access_key\n"
 
 //DockerFileContent_Python_2_7 docker file
 const DockerFileContent_Python_2_7 = "FROM quebicdocker/quebic-faas-container-python-2_7:0.1.0\nADD function_handler.tar /app/function_handler/\nARG access_key\nENV access_key $access_key\n"

@@ -144,7 +144,7 @@ func (app *App) setupMessenger() {
 func (app *App) loadAPIGatewayData() {
 
 	managerAccessKey := app.config.Auth.Accesstoken
-	requestHeaders := make(map[string]string)
+	requestHeaders := make(map[string]interface{})
 	requestHeaders[common.HeaderAccessKey] = managerAccessKey
 
 	_, err := app.messenger.PublishBlocking(
