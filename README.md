@@ -279,6 +279,9 @@ callback(error, null, 401); //reply 401 status code with with error-data
 ##### Upgrade / Downgrade function
 * quebic function deploy --name [function name] --version [version]
 
+##### Scale function
+* quebic function scale --name [function name] --replicas [count]
+
 ##### Delete function
 * quebic function delete --name [function name]
 	
@@ -288,6 +291,21 @@ callback(error, null, 401); //reply 401 status code with with error-data
 ##### Inspect function details
 * quebic function inspect --name [function name]
 
+##### Test function
+* quebic function test --name [function name] --payload '{"message":"hello"}'
+
+## <a name="function-container"></a>Function Container
+ * You can decide spin up mechanism of your function container. 
+ * By default container is started after create function spec. But you can config it to start by a request 
+ * You can decide idle timeout of the container.
+```yml
+function:
+  life:
+    awake: request
+    idleState:
+      timeout: 15
+      timeunit: minutes # or seconds or hours
+```
 ## <a name="routing"></a>Routing
  * You can create routing endpoint to fire events from apigateway.
 ##### Routing Spec
@@ -323,19 +341,6 @@ headersToPass: # headers going to pass with event
 
 ##### Inspect Route details
 * quebic route inspect --name [route name]
-
-## <a name="function-container"></a>Function Container
- * You can decide spin up mechanism of your function container. 
- * By default container is started after create function spec. But you can config it to start by a request 
- * You can decide idle timeout of the container.
-```yml
-function:
-  life:
-    awake: request
-    idleState:
-      timeout: 15
-      timeunit: minutes # or seconds or hours
-```
 
 ## <a name="async"></a> Asynchronous invocation from API Gateway
  * Quebic provides way to invoke function Asynchronous way from API Gateway.
