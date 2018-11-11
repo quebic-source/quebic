@@ -22,9 +22,8 @@ Quebic is a framework for writing serverless functions to run on Kubernetes. Cur
 
 ## <a name="getting-started"></a>Getting Started
 
-#### Install Docker
- * If you have already setup docker on your environment ,skip this step.
- * [Install Docker](https://docs.docker.com/install/)
+#### Prerequisites : Kubernetes
+ * [Setup Kubernetes](https://kubernetes.io/docs/tutorials/)
 
 #### Getting Binaries
 
@@ -36,15 +35,23 @@ Quebic is a framework for writing serverless functions to run on Kubernetes. Cur
  * [Install golang into your environment](https://golang.org/doc/install). 
  * Get [govendor](https://github.com/kardianos/govendor) tool. 
  * Run **govendor fetch**. This will download all the required dependencies for quebic.
- * Run for build quebic-mgr **go install quebic-faas/quebic-faas-mgr**
  * Run for build quebic cli **go install quebic-faas/quebic-faas-cli**
  * Congrats !!! Now you can find your binaries from $GOPATH/bin dir.
 
 #### Run quebic-manager
- * Jump into quebic binaries location. Then run this **quebic-mgr**
- * You can use quebic cli or quebic-mgr-dashboard ui to communicate with quebic-manager.
- * By default quebic-mgr-dashboard ui is running [localhost:8000](http://localhost:8000)
- 
+ * Jump into quebic binaries location. Then run this **quebic manager start**
+ * This commond deploy and start the quebic-manager inside k8 cluster.
+
+#### Connect cli with manager
+* Run **quebic manager connect**
+* This commond config quebic-cli to connect with quebic-manager
+
+#### Fetch quebic-manager logs
+* Run **quebic manager logs**
+
+#### Check status of quebic-manager
+* Run **quebic manager status**
+
 ## <a name="function-runtimes"></a>Function Runtimes
 
 #### Python Runtime
@@ -55,18 +62,18 @@ Quebic is a framework for writing serverless functions to run on Kubernetes. Cur
 ```python
 def handler(payload, context, callback):
     
-    def m_callback(r):
+    def __callback(r):
         callback(None, 'success', 201)
 
-    def m_error_callback(err):
+    def __error_callback(err):
         callback(None, 'failed', 403)
 
     context.messenger()
       .publish(
          'test.Receiver', 
          {'id': payload}, 
-         m_callback, 
-         m_error_callback
+         __callback, 
+         __error_callback
       )
 ```
 
@@ -362,12 +369,6 @@ context.logger().info("log info");
  
  
  ## <a name="configurations"></a>Configurations
- #### Quebic manager configurations
- * Quebic manager config file is located at $HOME/.quebic-faas/manager-config.yml
- * Also you can pass arguments to the quebic manager in runtime.
- * Run **quebic-mgr -h** to list down all available commands. 
- 
- #### Quebic CLI configurations
  * Quebic cli config file is located at $HOME/.quebic-faas/cli-config.yml
  * Also you can pass arguments to the quebic cli in runtime.
  * Run **quebic -h** to list down all available commands. 
