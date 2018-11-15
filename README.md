@@ -51,6 +51,11 @@ Quebic is a framework for writing serverless functions to run on Kubernetes. Cur
 #### Check status of quebic-manager
 * Run **quebic manager status**
 
+### Ingress details
+* Run **quebic ingress describe**
+* quebic-manager ==> **http://<ingress-address> Host: api.mgr.quebic.io**
+* quebic-api-gateway ==> **http://<ingress-address> Host: api.quebic.io**
+
 ## <a name="function-runtimes"></a>Function Runtimes
 
 #### Python Runtime
