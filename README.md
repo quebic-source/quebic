@@ -25,36 +25,25 @@ Quebic is a framework for writing serverless functions to run on Kubernetes. Cur
 #### Prerequisites : Kubernetes
  * [Setup Kubernetes](https://kubernetes.io/docs/tutorials/)
 
-#### Getting Binaries
+##### Create cluster role
+* Run ```kubectl create clusterrolebinding quebic-faas-admin --clusterrole=admin --serviceaccount=quebic-faas:default```
 
-###### For Linux Users
- * Download binaries from [here](https://github.com/quebic-source/quebic/releases). Save and extract it into preferred location.
- 
-###### For Windows Users
- * [Install golang into your environment](https://golang.org/doc/install). 
- * Get [govendor](https://github.com/kardianos/govendor) tool. 
- * Run **govendor fetch**. This will download all the required dependencies for quebic.
- * Run for build quebic cli **go install quebic-faas/quebic-faas-cli**
- * Congrats !!! Now you can find your binaries from $GOPATH/bin dir.
+#### Getting Binaries
+* Download binaries from [here](https://github.com/quebic-source/quebic/releases). Save and extract it into preferred location.
 
 #### Run quebic-manager
- * Jump into quebic binaries location. Then run this **quebic manager start**
+ * Jump into quebic binaries location. Then run this ```quebic manager start```
  * This commond deploy and start the quebic-manager inside k8 cluster.
 
 #### Connect cli with manager
-* Run **quebic manager connect**
+* Run ```quebic manager connect```
 * This commond config quebic-cli to connect with quebic-manager
 
 #### Fetch quebic-manager logs
-* Run **quebic manager logs**
+* Run ```quebic manager logs```
 
 #### Check status of quebic-manager
-* Run **quebic manager status**
-
-#### Ingress details
-* Run **quebic ingress describe**
-* quebic-manager ==> ```http://<ingress-address> Host: api.mgr.quebic.io```
-* quebic-api-gateway ==> ```http://<ingress-address> Host: api.quebic.io```
+* Run ```quebic manager status```
 
 ## <a name="function-runtimes"></a>Function Runtimes
 
