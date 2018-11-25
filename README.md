@@ -46,7 +46,7 @@ Quebic is a framework for writing serverless functions to run on Kubernetes. Cur
 #### Login into quebic-manager
 * To perform rest of the functionalities you have to log into quebic-manager.
 * default username: admin password : admin
-* Run ```quebic user login -u <username> -p <password>```
+* Run ```quebic user login -u [username] -p [password]```
 * Note : make to to change default password of the root user onece you logged in.
 
 ## <a name="function-runtimes"></a>Function Runtimes
@@ -361,6 +361,9 @@ headersToPass: # headers going to pass with event
 
 ##### Update User
 * ```quebic user update -f [firstname]```
+
+#### Login
+* ```quebic user login -u [username] -p [password]```
 
 ##### Change password
 * ```quebic user change-password -p [password]``` 
