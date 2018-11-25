@@ -14,6 +14,7 @@ Quebic is a framework for writing serverless functions to run on Kubernetes. Cur
 * [Function Container](#function-container)
 * [Routing](#routing)
 * [Asynchronous invocation from API Gateway](#async)
+* [Users](#users)
 * [Logs](#logs)
 * [Configurations](#configurations)
 * [Example Project](https://github.com/quebic-source/quebic-sample-project)
@@ -24,9 +25,6 @@ Quebic is a framework for writing serverless functions to run on Kubernetes. Cur
 
 #### Prerequisites : Kubernetes
  * [Setup Kubernetes](https://kubernetes.io/docs/tutorials/)
-
-##### Create cluster role
-* Run ```kubectl create clusterrolebinding quebic-faas-admin --clusterrole=admin --serviceaccount=quebic-faas:default```
 
 #### Getting Binaries
 * Download binaries from [here](https://github.com/quebic-source/quebic/releases). Save and extract it into preferred location.
@@ -44,6 +42,12 @@ Quebic is a framework for writing serverless functions to run on Kubernetes. Cur
 
 #### Check status of quebic-manager
 * Run ```quebic manager status```
+
+#### Login into quebic-manager
+* To perform rest of the functionalities you have to log into quebic-manager.
+* default username: admin password : admin
+* Run ```quebic user login -u <username> -p <password>```
+* Note : make to to change default password of the root user onece you logged in.
 
 ## <a name="function-runtimes"></a>Function Runtimes
 
@@ -271,28 +275,28 @@ callback(error, null, 401); //reply 401 status code with with error-data
 
 #### Manage your functions with quebic cli
 ##### Create function
-* quebic function create --file [deployment spec file]
+* ```quebic function create --file [deployment spec file]```
 	
 ##### Update function
-* quebic function update --file [deployment spec file]
+* ```quebic function update --file [deployment spec file]```
 
 ##### Upgrade / Downgrade function
-* quebic function deploy --name [function name] --version [version]
+* ```quebic function deploy --name [function name] --version [version]```
 
 ##### Scale function
-* quebic function scale --name [function name] --replicas [count]
+* ```quebic function scale --name [function name] --replicas [count]```
 
 ##### Delete function
-* quebic function delete --name [function name]
+* ```quebic function delete --name [function name]```
 	
 ##### List all functions
-* quebic function ls
+* ```quebic function ls```
 
 ##### Inspect function details
-* quebic function inspect --name [function name]
+* ```quebic function inspect --name [function name]```
 
 ##### Test function
-* quebic function test --name [function name] --payload '{"message":"hello"}'
+* ```quebic function test --name [function name] --payload '{"message":"hello"}'```
 
 ## <a name="function-container"></a>Function Container
  * You can decide spin up mechanism of your function container. 
@@ -331,16 +335,16 @@ headersToPass: # headers going to pass with event
 ```
 #### Manage Routes with quebic cli
 ##### Create Route
-* quebic route create --file [route spec file]
+* ```quebic route create --file [route spec file]```
 	
 ##### Update Route
-* quebic route update --file [route spec file]
+* ```quebic route update --file [route spec file]```
 	
 ##### List all Routes
-* quebic route ls
+* ```quebic route ls```
 
 ##### Inspect Route details
-* quebic route inspect --name [route name]
+* ```quebic route inspect --name [route name]```
 
 ## <a name="async"></a> Asynchronous invocation from API Gateway
  * Quebic provides way to invoke function Asynchronous way from API Gateway.
@@ -350,6 +354,21 @@ headersToPass: # headers going to pass with event
  <api-gateway>/request-tracker/{request-id}
  ```
 
+## <a name="users"></a>Users
+##### Create User
+* ```quebic user create -u [username] -f [firstname] -p [password] -r [role]```
+* Role value can be ***admin | developer | tester*** 
+
+##### Update User
+* ```quebic user update -f [firstname]```
+
+##### Change password
+* ```quebic user change-password -p [password]``` 
+
+##### Auth context
+* Get auth context of the logged user
+* ```quebic user auth-context```
+
 ## <a name="logs"></a>Logs
  * Quebic provides way to access function-container's native logs by using quebic cli.
  * **quebic function logs --name [function name]**
@@ -358,13 +377,13 @@ headersToPass: # headers going to pass with event
 context.logger().info("log info");
 ```
  * You can inspect these logs by using cli 
- * **quebic request-tracker logs --request-id [request id]**
+ * ```quebic request-tracker logs --request-id [request id]```
  
  
  ## <a name="configurations"></a>Configurations
  * Quebic cli config file is located at $HOME/.quebic-faas/cli-config.yml
  * Also you can pass arguments to the quebic cli in runtime.
- * Run **quebic -h** to list down all available commands. 
+ * Run ```quebic -h``` to list down all available commands. 
  
  ##  <a name="consultants"></a>Authors
  * Tharanga Thennakoon - tharanganilupul@gmail.com 
