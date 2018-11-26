@@ -34,7 +34,7 @@ Quebic is a framework for writing serverless functions to run on Kubernetes. Cur
 
 #### Connect cli with manager
 * Run ```quebic manager connect```
-* This commond config quebic-cli to connect with quebic-manager
+* This command config quebic-cli to connect with quebic-manager
 
 #### Fetch quebic-manager logs
 * Run ```quebic manager logs```
