@@ -32,6 +32,7 @@ type User struct {
 	Username   string `json:"username"`
 	Firstname  string `json:"firstname"`
 	Password   string `json:"password"`
+	Role       string `json:"role"`
 	CreatedAt  string `json:"createdAt" yaml:"createdAt"`   //created time
 	ModifiedAt string `json:"modifiedAt" yaml:"modifiedAt"` //modified time
 }
@@ -54,6 +55,11 @@ func (o *User) SetID(id string) {
 //SetModifiedAt set modified date
 func (o *User) SetModifiedAt() {
 	o.ModifiedAt = common.CurrentTime()
+}
+
+//SetCreatedAt set create date
+func (o *User) SetCreatedAt() {
+	o.CreatedAt = common.CurrentTime()
 }
 
 //Event model ######################################
@@ -187,17 +193,18 @@ type EnvironmentVariable struct {
 	Value string `json:"value" yaml:"value"`
 }
 
-//ManagerComponent components handle by manager ######################################
-//ID + AccessKey => JWT => store in dockerimage => later that JWT token will use to authenticate resource access
+//FunctionData used to get data from manager to function
+type FunctionData struct {
+	Version string `json:"version"`
+}
+
+//ManagerComponent components handle by manager
 type ManagerComponent struct {
-	ID                string     `json:"id"`
-	DockerImageID     string     `json:"dockerImageID"`
-	DockerContainerID string     `json:"dockerContainerID"`
-	AccessKey         string     `json:"accessKey"`
-	Deployment        Deployment `json:"deployment"`
-	Log               EntityLog  `json:"log"`
-	CreatedAt         string     `json:"createdAt" yaml:"createdAt"`   //created time
-	ModifiedAt        string     `json:"modifiedAt" yaml:"modifiedAt"` //modified time
+	ID         string     `json:"id"`
+	Name       string     `json:"name"`
+	Version    string     `json:"Version"`
+	Deployment Deployment `json:"deployment"`
+	ModifiedAt string     `json:"modifiedAt" yaml:"modifiedAt"` //modified time
 }
 
 //GetReflectObject get Reflect Object
@@ -247,8 +254,9 @@ type EntityLog struct {
 
 //ApigatewayData used to get data from manager to apigateway
 type ApigatewayData struct {
-	ManagerComponents []ManagerComponent `json:"managerComponents"`
-	Resources         []Resource         `json:"resources"`
+	ManagerComponents        []ManagerComponent `json:"managerComponents"`
+	Resources                []Resource         `json:"resources"`
+	CurrentDeploymentVersion string             `json:"currentDeploymentVersion"`
 }
 
 //RequestTracker requestTracker
@@ -312,4 +320,9 @@ type FunctionLife struct {
 type FunctionIdleState struct {
 	Timeunit string `json:"timeunit" yaml:"timeunit"` //eg: seconds, minutes, hours
 	Timeout  int    `json:"timeout" yaml:"timeout"`   //eg: 45
+}
+
+//ShutDownRequest shutDownRequest
+type ShutDownRequest struct {
+	DeploymentID string `json:"deploymentID" yaml:"deploymentID"`
 }

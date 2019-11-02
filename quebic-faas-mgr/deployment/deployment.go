@@ -14,7 +14,11 @@
 
 package deployment
 
-import "quebic-faas/types"
+import (
+	"quebic-faas/types"
+
+	"k8s.io/api/core/v1"
+)
 
 //Deployment deployment
 type Deployment interface {
@@ -22,10 +26,21 @@ type Deployment interface {
 	Create(deploySpec Spec) (Details, error)
 	Update(deploySpec Spec) (Details, error)
 	CreateOrUpdate(deploySpec Spec) (Details, error)
+	CreateOrUpdateDeployment(deploySpec Spec) error
+	CreateOrUpdateService(deploySpec Spec) (Details, error)
+	CreateService(deploySpec Spec) (Details, error)
 	Delete(name string) error
+	DeleteDeployment(name string) error
 	ListAll(filters ListFilters) ([]Details, error)
 	ListByName(name string) (Details, error)
-	LogsByName(name string, options types.FunctionContainerLogOptions) (string, error)
+	GetService(name string) (Details, error)
+	GetDeployment(name string) (Details, error)
+	GetStatus(name string) (string, error)
+	LogsByName(name string, options types.FunctionContainerLogOptions) error
+	ListContainersByName(name string) ([]Container, error)
+	LogsByContainerID(id string, options types.FunctionContainerLogOptions) error
+	IngressCreateOrUpdate(spec IngressSpec) error
+	IngressDescribe(waitForAvailable bool) (IngressDetails, error)
 	DeploymentType() string
 }
 
@@ -38,17 +53,22 @@ type Details struct {
 	Envkeys     map[string]string
 	Host        string
 	PortConfigs []PortConfig
-	Pods        []Pod
+	Containers  []Container
 	Status      string
 }
 
 //Spec deployment spec
 type Spec struct {
-	Name        string
-	Dockerimage string
-	Replicas    Replicas
-	Envkeys     map[string]string
-	PortConfigs []PortConfig
+	Name            string
+	DeploymentName  string
+	Version         string
+	Dockerimage     string
+	Replicas        Replicas
+	Envkeys         map[string]string
+	PortConfigs     []PortConfig
+	Volumes         []Volume
+	Command         []string
+	ImagePullPolicy string
 }
 
 //PortConfig portConfig
@@ -59,9 +79,9 @@ type PortConfig struct {
 	TargetPort Port //container port
 }
 
-//Pod pod spec
-type Pod struct {
-	Name string
+//Container container spec
+type Container struct {
+	ID string
 }
 
 //Port outside exposed port
@@ -75,3 +95,21 @@ type Replicas int
 
 //ListFilters list filters
 type ListFilters map[string]string
+
+//Volume volume
+type Volume struct {
+	HostPath      string
+	ContainerPath string
+	HostPathType  v1.HostPathType
+}
+
+//IngressSpec ingress create/update spec
+type IngressSpec struct {
+	StaticIPName string
+}
+
+//IngressDetails about ingress details
+type IngressDetails struct {
+	Hostname string
+	IP       string
+}

@@ -51,6 +51,18 @@ func SetUpHTTPHandlers(
 	loggerUtil logger.Logger,
 	deployment dep.Deployment) {
 
+	//root handler
+	type StatusResponse struct {
+		Status interface{} `json:"status"`
+	}
+	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		writeResponse(
+			w,
+			StatusResponse{Status: "quebic-faas manager is running"},
+			200,
+		)
+	}).Methods("GET")
+
 	http := &Httphandler{
 		config:     config,
 		db:         db,
@@ -58,11 +70,11 @@ func SetUpHTTPHandlers(
 		loggerUtil: loggerUtil,
 		deployment: deployment,
 	}
+
+	http.AuthHandler(router)
 	http.EventHandler(router)
 	http.ResourceHandler(router)
 	http.FunctionHandler(router)
-	http.MessengerHandler(router)
-	http.AuthHandler(router)
 	http.ApigatewayDataServe(router)
 	http.MgrComponentHandler(router)
 	http.RequestTrackerHandler(router)
@@ -133,12 +145,14 @@ func processRequest(r *http.Request, entity interface{}) error {
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		return makeError("unable to read request %v", err)
+		log.Printf("unable to read request %v", err)
+		return fmt.Errorf("Request processing failed")
 	}
 
 	err = json.Unmarshal(body, entity)
 	if err != nil {
-		return makeError("unable to parse json request to entity %v", err)
+		log.Printf("unable to parse request %v", err)
+		return fmt.Errorf("Request processing failed - Invalid JSON")
 	}
 
 	return nil
@@ -179,11 +193,11 @@ func Trim(s string) string {
 	return strings.Trim(s, " ")
 }
 
-func restartAPIGateway(appConfig config.AppConfig, deployment dep.Deployment) {
+func restartAPIGateway(appConfig config.AppConfig, db *bolt.DB, deployment dep.Deployment, msg _messenger.Messenger) {
 
 	go func() {
 
-		err := components.ApigatewaySetup(&appConfig, deployment)
+		err := components.ApigatewaySetup(&appConfig, db, deployment, msg)
 		if err != nil {
 			log.Printf("apigateway re-start failed : %v", err)
 		}

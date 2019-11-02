@@ -31,32 +31,29 @@ const EventPrefixExecutionACK = eventPrefix + EventJOIN + "execution-ack"
 //EventPrefixInternal execution ack prefix
 const EventPrefixInternal = eventPrefix + EventJOIN + "internal"
 
-//EventPrefixFunctionAwake quebic-faas-event.internal.function-awake.<function-name>
-const EventPrefixFunctionAwake = eventPrefix + EventJOIN + "function-awake"
-
-//ConsumerMgr consumer
-const ConsumerMgr = "quebic-faas-mgr"
-
-//ConsumerApigateway consumer
-const ConsumerApigateway = "quebic-faas-apigateway"
-
-//ConsumerRequestTracker consumer
-const ConsumerRequestTracker = "quebic-faas-request-tracker"
-
-//ConsumerRequestTrackerDataFetch consumer data-fetch
-const ConsumerRequestTrackerDataFetch = "quebic-faas-request-tracker-data-fetch"
-
-//ConsumerFunctionRequestPrefix quebic-faas-function-awake-
-const ConsumerFunctionRequestPrefix = "quebic-faas-function-request-"
-
-//ConsumerFunctionAwakePrefix quebic-faas-function-awake-
-const ConsumerFunctionAwakePrefix = "quebic-faas-function-awake-"
+//EventPrefixFunctionAwakePrefix quebic-faas-event.internal.function-awake.<function-name>
+const EventPrefixFunctionAwakePrefix = EventPrefixInternal + EventJOIN + "function-awake" + EventJOIN
 
 //EventApigatewayDataFetch used to share data between manage ans apigateway
 const EventApigatewayDataFetch = EventPrefixInternal + EventJOIN + "apigateway-data-fetch"
+
+//EventFunctionDataFetch used to share data between manage ans function
+const EventFunctionDataFetch = EventPrefixInternal + EventJOIN + "function-data-fetch"
 
 //EventRequestTracker used to listing apigatewat logs
 const EventRequestTracker = EventPrefixInternal + EventJOIN + "request-tracker"
 
 //EventRequestTrackerDataFetch used to listing apigateways data fetch request
 const EventRequestTrackerDataFetch = EventPrefixInternal + EventJOIN + "request-tracker-data-fetch"
+
+//EventNewVersionPrefix brodcast event for new versions
+const EventNewVersionPrefix = EventPrefixInternal + EventJOIN + "new-version" + EventJOIN
+
+//EventNewVersionAPIGateway api-gateway new version
+const EventNewVersionAPIGateway = EventNewVersionPrefix + ComponentAPIGateway
+
+//EventNewVersionFunctionPrefix function new version
+const EventNewVersionFunctionPrefix = EventNewVersionPrefix + "function" + EventJOIN
+
+//EventShutDownRequest event send from component that request to delete deployment
+const EventShutDownRequest = EventPrefixInternal + EventJOIN + "shutdown-request"

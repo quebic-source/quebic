@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"mime/multipart"
 	"net/http"
 	"os"
@@ -199,27 +198,16 @@ func (mgrService *MgrService) makeMultipartFormRequest(functionDTO *types.Functi
 		return nil, makeErrorToErrorResponse(err)
 	}
 
-	req.Header.Add("Content-Type", writer.FormDataContentType())
-	req.Header.Add("Authorization", mgrService.Auth.AuthToken)
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.Header.Set("Authorization", mgrService.Auth.AuthToken)
 
 	if header != nil {
 		for k, v := range header {
-			req.Header.Add(k, v)
+			req.Header.Set(k, v)
 		}
 	}
 
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, makeErrorToErrorResponse(err)
-	}
-	defer res.Body.Close()
-
-	responseBody, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return nil, makeErrorToErrorResponse(err)
-	}
-
-	return &ResponseMessage{StatusCode: res.StatusCode, Data: responseBody}, nil
+	return call(req)
 
 }
 

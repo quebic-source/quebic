@@ -37,6 +37,9 @@ func setupCmds() {
 	rootCmd.AddCommand(apigatewayCmd)
 	rootCmd.AddCommand(eventboxCmd)
 	rootCmd.AddCommand(configCmd)
+	rootCmd.AddCommand(mgrCmd)
+	rootCmd.AddCommand(ingressCmd)
+	rootCmd.AddCommand(userCmd)
 }
 
 func setupFlags() {

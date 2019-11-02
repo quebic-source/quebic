@@ -37,16 +37,27 @@ manager pass jwt encoded meta data which required to start function. this encode
 */
 const EnvKeyFunctionContainerSecret = "secret"
 
-//Used by function docker service
+//Used by manager dashboard
+const EnvKey_mgrAPI = "mgr_api"
+const EnvKey_ingressConfig_staticIP = "ingressConfig_staticIP"
+
 const EnvKey_appID = "appID"
+const EnvKey_deploymentID = "deploymentID"
+const EnvKey_version = "version"
+
 const EnvKey_rabbitmq_exchange = "rabbitmq_exchange"
 const EnvKey_rabbitmq_host = "rabbitmq_host"
 const EnvKey_rabbitmq_port = "rabbitmq_port"
 const EnvKey_rabbitmq_management_username = "rabbitmq_management_username"
 const EnvKey_rabbitmq_management_password = "rabbitmq_management_password"
+
 const EnvKey_eventConst_eventPrefixUserDefined = "eventConst_eventPrefixUserDefined"
-const EnvKey_eventConst_eventPrefixFunctionAwake = "eventConst_eventPrefixFunctionAwake"
-const EnvKey_eventConst_eventLogListener = "eventConst_eventLogListener"
+
+const EnvKey_eventConst_eventLog = "eventConst_eventLog"
+const EnvKey_eventConst_eventFunctionAwake = "eventConst_eventFunctionAwake"
+const EnvKey_eventConst_eventDataFetch = "eventConst_eventDataFetch"
+const EnvKey_eventConst_eventNewVersion = "eventConst_eventNewVersion"
+const EnvKey_eventConst_eventShutDownRequest = "eventConst_eventShutDownRequest"
 
 const EnvKey_events = "events"
 const EnvKey_artifactLocation = "artifactLocation"

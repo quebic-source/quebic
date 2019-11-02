@@ -12,22 +12,12 @@
 //    See the License for the specific language governing permissions and
 //    limitations under the License.
 
-package common
+package auth
 
-import (
-	jwt "github.com/dgrijalva/jwt-go"
-)
-
-//CreateJWTToken create jwt token
-func CreateJWTToken(claims jwt.MapClaims, secret string) (string, error) {
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
-	tokenString, err := token.SignedString([]byte(secret))
-	if err != nil {
-		return "", err
-	}
-
-	return tokenString, nil
-
-}
+const ErrorMessageRequestProcessFailed = "Request processing failed"
+const ErrorMessageRequestProcessFailedInvalidJSON = ErrorMessageRequestProcessFailed + " - Invalid JSON"
+const ErrorMessageAuthHeaderNotFound = "Authorization header not found"
+const ErrorMessageInvalidToken = "Invalid Token"
+const ErrorMessageAuthFailed = "Access Denied"
+const ErrorMessageInvalidCredentials = "Invalid Credentials"
+const ErrorMessageInternalError = "Internal Error"

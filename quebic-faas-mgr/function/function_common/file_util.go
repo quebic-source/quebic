@@ -185,5 +185,8 @@ func getBuildContextTar(functionID string) string {
 }
 
 func functionsStoredLocation() string {
+	if (common.GetUserHomeDir() == "") || (common.GetUserHomeDir() == common.FilepathSeparator) {
+		return common.FilepathSeparator + functionsStoredDir
+	}
 	return common.GetUserHomeDir() + common.FilepathSeparator + functionsStoredDir
 }

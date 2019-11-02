@@ -5,11 +5,11 @@ function:
   handler: index.validationHandle
   runtime: nodejs
   replicas: 1
-  life:
-    awake: request
-    idleState:
-      timeout: 40
-      timeunit: seconds
+#  life:
+#    awake: request
+#    idleState:
+#      timeout: 40
+#      timeunit: seconds
   events:
     - products.ProductCreate
     - products.ProductGetByID

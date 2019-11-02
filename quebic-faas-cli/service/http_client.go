@@ -1,9 +1,11 @@
 package service
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
+	"quebic-faas/common"
 	"quebic-faas/types"
 	"strings"
 )
@@ -51,16 +53,29 @@ func (mgrService *MgrService) makeRequest(path string, method string, payload in
 		return nil, makeErrorToErrorResponse(err)
 	}
 
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Authorization", mgrService.Auth.AuthToken)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", mgrService.Auth.AuthToken)
 
 	if header != nil {
 		for k, v := range header {
-			req.Header.Add(k, v)
+			req.Header.Set(k, v)
 		}
 	}
 
-	res, err := http.DefaultClient.Do(req)
+	return call(req)
+
+}
+
+func call(req *http.Request) (*ResponseMessage, *types.ErrorResponse) {
+
+	req.Host = common.IngressHostManager
+
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	client := &http.Client{Transport: tr}
+
+	res, err := client.Do(req)
 	if err != nil {
 		return nil, makeErrorToErrorResponse(err)
 	}

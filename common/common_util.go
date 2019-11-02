@@ -25,6 +25,8 @@ import (
 	"runtime"
 	"strconv"
 	"time"
+
+	uuid "github.com/satori/go.uuid"
 )
 
 //FilepathSeparator filepathSeparator
@@ -87,4 +89,20 @@ func StrParseToPrimitive(str string) interface{} {
 //CurrentTime current time
 func CurrentTime() string {
 	return time.Now().String()
+}
+
+//CurrentTimestamp current time stamp
+func CurrentTimestamp() string {
+	return string(time.Now().UnixNano() / int64(time.Millisecond))
+}
+
+//UUIDGen uuid generator
+func UUIDGen() string {
+
+	_uuid, err := uuid.NewV4()
+	if err != nil {
+		return UUIDGen() //retry
+	}
+
+	return _uuid.String()
 }

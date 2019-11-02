@@ -17,6 +17,7 @@ package httphandler
 import (
 	"encoding/json"
 	"net/http"
+	"quebic-faas/auth"
 	"quebic-faas/common"
 	"quebic-faas/quebic-faas-mgr/dao"
 	"quebic-faas/types"
@@ -30,12 +31,13 @@ import (
 func (httphandler *Httphandler) EventHandler(router *mux.Router) {
 
 	db := httphandler.db
+	authConfig := httphandler.config.Auth
 
-	router.HandleFunc("/events", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/events", validateMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		getAllEvents(w, r, db, &types.Event{})
-	}).Methods("GET")
+	}, auth.RoleAny, authConfig)).Methods("GET")
 
-	router.HandleFunc("/events", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/events", validateMiddleware(func(w http.ResponseWriter, r *http.Request) {
 
 		event := &types.Event{}
 		err := processRequest(r, event)
@@ -57,7 +59,7 @@ func (httphandler *Httphandler) EventHandler(router *mux.Router) {
 
 		add(w, r, db, event)
 
-	}).Methods("POST")
+	}, auth.RoleAny, authConfig)).Methods("POST")
 
 }
 

@@ -18,11 +18,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"quebic-faas/common"
 	_messenger "quebic-faas/messenger"
 	"quebic-faas/quebic-faas-apigateway/config"
 	"quebic-faas/types"
+	"sync/atomic"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -33,6 +35,7 @@ type Httphandler struct {
 	Config        config.AppConfig
 	Messenger     _messenger.Messenger
 	AppStatusList map[string]string
+	Usage         int32
 }
 
 //SuccessResponse successResponse
@@ -66,6 +69,11 @@ func SetUpHTTPHandlers(
 		AppStatusList: appStatusList,
 	}
 
+	//check wether this deployment is latest version
+	httphandler.checkForShutdown(config.CurrentDeploymentVersion)
+
+	httphandler.listeningForNewVersion()
+
 	httphandler.healthCheckEndpointHandler(router)
 	httphandler.requestTrackerHandler(router)
 
@@ -79,15 +87,27 @@ func SetUpHTTPHandlers(
 func (httphandler *Httphandler) healthCheckEndpointHandler(router *mux.Router) {
 
 	type StatusResponse struct {
-		Status interface{} `json:"status"`
+		Status  interface{} `json:"status"`
+		Version string      `json:"version"`
 	}
 
+	router.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		httphandler.usageUp()
+		writeResponse(w, StatusResponse{
+			Status:  fmt.Sprintf("%v is running", common.ComponentAPIGateway),
+			Version: httphandler.Config.Version,
+		}, 200, nil)
+		httphandler.usageDown()
+	}).Methods("GET")
+
 	router.HandleFunc("/manage/health", func(w http.ResponseWriter, r *http.Request) {
+		httphandler.usageUp()
 		if len(httphandler.AppStatusList) == 0 {
 			writeResponse(w, StatusResponse{Status: "UP"}, 200, nil)
 		} else {
 			writeResponse(w, StatusResponse{Status: httphandler.AppStatusList}, 500, nil)
 		}
+		httphandler.usageDown()
 	}).Methods("GET")
 
 }
@@ -95,6 +115,8 @@ func (httphandler *Httphandler) healthCheckEndpointHandler(router *mux.Router) {
 func (httphandler *Httphandler) requestTrackerHandler(router *mux.Router) {
 
 	router.HandleFunc("/request-tracker/{requestID}", func(w http.ResponseWriter, r *http.Request) {
+
+		httphandler.usageUp()
 
 		params := mux.Vars(r)
 		requestID := params["requestID"]
@@ -129,6 +151,8 @@ func (httphandler *Httphandler) requestTrackerHandler(router *mux.Router) {
 			},
 			time.Second*5,
 		)
+
+		httphandler.usageDown()
 
 	}).Methods("GET")
 
@@ -191,4 +215,89 @@ func writeResponse(w http.ResponseWriter, v interface{}, status int, headers map
 		makeErrorResponse(w, http.StatusInternalServerError, err)
 	}
 
+}
+
+func (httphandler *Httphandler) listeningForNewVersion() {
+
+	appID := httphandler.Config.DeploymentID + "-" + common.UUIDGen()
+	messenger := _messenger.Messenger{
+		AppID:          appID,
+		EventBusConfig: httphandler.Config.EventBusConfig,
+	}
+	err := messenger.Init()
+	if err != nil {
+		log.Fatalf("listening new version messenger setup failed : %v", err)
+		return
+	}
+
+	consumerID := common.ConsumerNewVersionAPIGateway
+	err = messenger.Subscribe(common.EventNewVersionAPIGateway, func(event _messenger.BaseEvent) {
+
+		newVersion := types.NewVersionMessage{}
+		event.ParsePayloadAsObject(&newVersion)
+
+		log.Printf("new version received my : %v, new : %v", httphandler.Config.Version, newVersion.Version)
+
+		httphandler.checkForShutdown(newVersion.Version)
+
+	}, consumerID)
+	if err != nil {
+		log.Fatalf("new-version-listener setup failed. cause : %v", err.Error())
+	}
+
+	log.Printf("new-version-listener setup")
+
+}
+
+func (httphandler *Httphandler) checkForShutdown(newVersion string) {
+
+	if httphandler.Config.Version != newVersion {
+
+		for true {
+			if !httphandler.isUse() {
+				break
+			}
+
+			time.Sleep(2 * time.Second)
+
+			//TODO remove this log later
+			log.Printf("waiting for apigateway is become free. usage %v", httphandler.getUsage())
+		}
+
+		//TODO remove this log later
+		log.Printf("apigateway is become free")
+
+		_, err := httphandler.Messenger.Publish(
+			common.EventShutDownRequest,
+			types.ShutDownRequest{
+				DeploymentID: httphandler.Config.DeploymentID,
+			},
+			nil,
+			func(event _messenger.BaseEvent, statuscode int, context _messenger.Context) {
+				log.Printf("shutdown request published")
+			},
+			nil,
+			0,
+		)
+		if err != nil {
+			log.Printf("shutdown request publish failed : %v", err)
+			return
+		}
+	}
+}
+
+func (httphandler *Httphandler) usageUp() {
+	atomic.AddInt32(&httphandler.Usage, 1)
+}
+
+func (httphandler *Httphandler) usageDown() {
+	atomic.AddInt32(&httphandler.Usage, -1)
+}
+
+func (httphandler *Httphandler) isUse() bool {
+	return (httphandler.getUsage() > 0)
+}
+
+func (httphandler *Httphandler) getUsage() int32 {
+	return atomic.LoadInt32(&httphandler.Usage)
 }

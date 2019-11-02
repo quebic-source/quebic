@@ -16,10 +16,12 @@ package app
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
+	"quebic-faas/auth"
 	"quebic-faas/common"
 	"quebic-faas/config"
 	_messenger "quebic-faas/messenger"
@@ -30,6 +32,7 @@ import (
 	dep "quebic-faas/quebic-faas-mgr/deployment"
 	"quebic-faas/quebic-faas-mgr/deployment/kube_deployment"
 	"quebic-faas/quebic-faas-mgr/function/function_util"
+	_gc "quebic-faas/quebic-faas-mgr/gc"
 	"quebic-faas/quebic-faas-mgr/httphandler"
 	"quebic-faas/quebic-faas-mgr/logger"
 	"quebic-faas/types"
@@ -50,6 +53,7 @@ type App struct {
 	router     *mux.Router
 	loggerUtil logger.Logger
 	deployment dep.Deployment
+	gc         _gc.GC
 }
 
 //Start init app
@@ -71,6 +75,12 @@ func (app *App) Start() {
 	//setup deployment
 	app.setupDeployment()
 
+	//setup gc
+	app.setupGC()
+
+	//setup manager components
+	app.setupIngress()
+
 	//setup manager components
 	app.setupManagerComponents()
 
@@ -88,6 +98,7 @@ func (app *App) DoConfiguration() {
 	//setup configuration
 	app.config.SetDefault()
 	app.setupConfiguration()
+	app.setupConfigurationFromEnvVars()
 }
 
 func (app *App) setupConfiguration() {
@@ -111,11 +122,21 @@ func (app *App) setupConfiguration() {
 		app.config.KubernetesConfig = savingConfig.KubernetesConfig
 		app.config.EventBusConfig = savingConfig.EventBusConfig
 		app.config.APIGatewayConfig = savingConfig.APIGatewayConfig
+		app.config.IngressConfig = savingConfig.IngressConfig
 		app.config.MgrDashboardConfig = savingConfig.MgrDashboardConfig
+		app.config.InCluster = savingConfig.InCluster
 		app.config.Deployment = savingConfig.Deployment
 
 	}
 
+}
+
+func (app *App) setupConfigurationFromEnvVars() {
+	ingressConfigStaticIP := os.Getenv(common.EnvKey_ingressConfig_staticIP)
+
+	if ingressConfigStaticIP != "" {
+		app.config.IngressConfig.StaticIP = ingressConfigStaticIP
+	}
 }
 
 //SaveConfiguration saveConfiguration in .config file
@@ -133,8 +154,10 @@ func (app *App) SaveConfiguration() {
 		DockerConfig:       app.config.DockerConfig,
 		EventBusConfig:     app.config.EventBusConfig,
 		APIGatewayConfig:   app.config.APIGatewayConfig,
+		IngressConfig:      app.config.IngressConfig,
 		MgrDashboardConfig: app.config.MgrDashboardConfig,
 		KubernetesConfig:   app.config.KubernetesConfig,
+		InCluster:          app.config.InCluster,
 		Deployment:         app.config.Deployment,
 	})
 
@@ -149,11 +172,13 @@ func (app *App) SaveConfiguration() {
 func (app *App) setupAdminUser() {
 
 	adminUser := types.User{
-		Username: app.config.Auth.Username,
-		Password: app.config.Auth.Password,
+		Username:  app.config.Auth.Username,
+		Password:  app.config.Auth.Password,
+		Firstname: app.config.Auth.Username,
+		Role:      auth.DefaultRole,
 	}
 
-	dao.Add(app.db, &adminUser)
+	dao.AddUser(app.db, &adminUser)
 
 }
 
@@ -163,22 +188,45 @@ func (app *App) setupDeployment() {
 		Config: kube_deployment.Config{
 			ConfigPath: app.config.KubernetesConfig.ConfigPath,
 		},
+		InCluser: app.config.InCluster,
 	}
 
 	app.deployment = kubeDeployment
 
-	err := app.deployment.Init()
-	if err != nil {
-		log.Fatalf("deployment init failed : %v", err)
+	if !app.config.InCluster {
+		err := app.deployment.Init()
+		if err != nil {
+			log.Fatalf("deployment init failed : %v", err)
+		}
 	}
+
+}
+
+func (app *App) setupGC() {
+	gc := _gc.GC{}
+	gc.Init(app.config, app.db, app.deployment)
+	app.gc = gc
+}
+
+func (app *App) setupIngress() {
+
+	log.Printf("ingress starting")
+
+	deployment := app.deployment
+	err := deployment.IngressCreateOrUpdate(dep.IngressSpec{
+		StaticIPName: app.config.IngressConfig.StaticIP,
+	})
+	if err != nil {
+		log.Fatalf("ingress setup failed : %v", err)
+	}
+
+	log.Printf("ingress started")
 
 }
 
 func (app *App) setupManagerComponents() {
 
-	deployment := app.deployment
-
-	err := components.EventbusSetup(&app.config, deployment)
+	err := components.EventbusSetup(&app.config, app.deployment)
 	if err != nil {
 		log.Fatalf("eventbus setup failed : %v", err)
 	}
@@ -187,25 +235,21 @@ func (app *App) setupManagerComponents() {
 	app.setupMessenger()
 
 	//apigateway data serve
-	app.setupApigatewayDdataFetchListener()
+	app.setupApigatewayDataFetchListener()
+
+	//function data serve
+	app.setupFunctionDataFetchListener()
+
+	//shutDownRequest
+	app.setupShutDownRequestListener()
 
 	//setup logger
 	app.setupLogger()
 
 	//apigateway
-	err = components.ApigatewaySetup(&app.config, deployment)
+	err = components.ApigatewaySetup(&app.config, app.db, app.deployment, app.messenger)
 	if err != nil {
 		log.Fatalf("apigateway setup failed : %v", err)
-	}
-
-	//mgr-dashboard
-	err = components.MgrDashboardSetup(&app.config)
-	if err != nil {
-		log.Printf("mgr-dashboard setup failed")
-		log.Printf("%v", err)
-	} else {
-		mgrDashboardAddress := "127.0.0.1" + ":" + common.IntToStr(app.config.MgrDashboardConfig.ServerConfig.Port)
-		log.Printf("quebic-faas-dashboard running on %s\n", mgrDashboardAddress)
 	}
 
 }
@@ -223,7 +267,7 @@ func (app *App) setupMessenger() {
 
 }
 
-func (app *App) setupApigatewayDdataFetchListener() {
+func (app *App) setupApigatewayDataFetchListener() {
 
 	messenger := app.messenger
 
@@ -270,6 +314,13 @@ func (app *App) setupApigatewayDdataFetchListener() {
 			return
 		}
 
+		//api-gateway version
+		apiGateway, err := dao.ManagerComponentGetAPIGateway(app.db)
+		if err != nil {
+			messenger.ReplyError(event, err.Error(), 500)
+			return
+		}
+
 		//remove nil from response
 		if components == nil {
 			components = make([]types.ManagerComponent, 0)
@@ -282,12 +333,77 @@ func (app *App) setupApigatewayDdataFetchListener() {
 		//assign data
 		apigatewayData.Resources = resources
 		apigatewayData.ManagerComponents = components
+		apigatewayData.CurrentDeploymentVersion = apiGateway.Version
 
 		messenger.ReplySuccess(event, apigatewayData, 200)
 
-	}, common.ConsumerMgr)
+	}, common.ConsumerApigatewayDataFetch)
 	if err != nil {
 		log.Fatalf("unable to subscribe internal message listen %v\n", err)
+	}
+
+}
+
+func (app *App) setupFunctionDataFetchListener() {
+
+	messenger := app.messenger
+
+	err := messenger.Subscribe(common.EventFunctionDataFetch, func(event _messenger.BaseEvent) {
+
+		function := &types.Function{}
+		err := event.ParsePayloadAsObject(function)
+		if err != nil {
+			messenger.ReplyError(event, "unable parse request object", 500)
+			return
+		}
+
+		err = dao.GetByID(app.db, function, func(v []byte) error {
+
+			if v == nil {
+				return fmt.Errorf("function not found")
+			}
+
+			json.Unmarshal(v, function)
+			return nil
+		})
+		if err != nil {
+			log.Printf("function-data-sent faild %v", err.Error())
+			messenger.ReplyError(event, err.Error(), 500)
+			return
+		}
+
+		functionData := types.FunctionData{Version: function.Version}
+
+		err = messenger.ReplySuccess(event, functionData, 200)
+		if err != nil {
+			log.Printf("function-data-sent reply faild %v", err.Error())
+		}
+
+	}, common.ConsumerFunctionDataFetch)
+
+	if err != nil {
+		log.Fatalf("unable to subscribe internal message listen %v\n", err)
+	}
+
+}
+
+func (app *App) setupShutDownRequestListener() {
+
+	messenger := app.messenger
+	gc := app.gc
+
+	err := messenger.Subscribe(common.EventShutDownRequest, func(event _messenger.BaseEvent) {
+
+		shutDownRequest := types.ShutDownRequest{}
+		event.ParsePayloadAsObject(&shutDownRequest)
+
+		gc.SubmitJob(shutDownRequest.DeploymentID)
+
+		messenger.ReplySuccess(event, shutDownRequest, 200)
+
+	}, common.ConsumerShutDownRequest)
+	if err != nil {
+		log.Fatalf("unable to subscribe internal message listen %v", err)
 	}
 
 }
@@ -352,7 +468,7 @@ func (app *App) setUpHTTPHandlers() {
 		loggerUtil,
 		deployment)
 
-	address := "127.0.0.1" + ":" + common.IntToStr(app.config.ServerConfig.Port)
+	address := app.config.ServerConfig.Host + ":" + common.IntToStr(app.config.ServerConfig.Port)
 
 	log.Printf("quebic-faas-manager running on %s\n", address)
 

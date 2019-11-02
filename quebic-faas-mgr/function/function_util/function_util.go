@@ -31,7 +31,6 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types"
-	uuid "github.com/satori/go.uuid"
 )
 
 const functionServicePrefix string = "quebic-faas-function-"
@@ -75,40 +74,36 @@ func FunctionDeploy(
 	function *quebicFaasTypes.Function) (string, error) {
 
 	if function.Life.Awake != common.FunctionLifeAwakeTypeRequest {
-		return functionDeploy(appConfig, deployment, function)
+		return functionDeploy(appConfig, deployment, messenger, function)
 	}
 
 	//when awake type request
-	functionService := GetServiceID(function.GetID())
+	functionDeploymentID := GetDeploymentID(*function)
 	for _, eventID := range function.Events {
 
-		consumerUUID, err := uuid.NewV4()
-		if err != nil {
-			return "", fmt.Errorf("unable to create consumerID %v", err)
-		}
-		consumerID := common.ConsumerFunctionRequestPrefix + consumerUUID.String()
+		consumerID := common.ConsumerFunctionRequestPrefix
 
 		//create event-listener for each functions events
-		err = messenger.Subscribe(eventID, func(baseEvent quebic_messenger.BaseEvent) {
+		err := messenger.Subscribe(eventID, func(baseEvent quebic_messenger.BaseEvent) {
 
 			//check function status
-			details, err := deployment.ListByName(functionService)
+			functionStatus, err := deployment.GetStatus(functionDeploymentID)
 			if err == nil {
 				//if function is allready running, nothing to deploy
-				if common.KubeStatusTrue == details.Status {
+				if common.KubeStatusTrue == functionStatus {
 					return
 				}
 			}
 
 			//function is not running, deploy it
-			_, err = functionDeploy(appConfig, deployment, function)
+			_, err = functionDeploy(appConfig, deployment, messenger, function)
 			if err != nil {
 				log.Printf("function deploy failed : %s", err.Error())
 				return
 			}
 
-			consumerID := common.ConsumerFunctionAwakePrefix + consumerUUID.String()
-			functionAwakeEvent := common.EventPrefixFunctionAwake + common.EventJOIN + function.GetID()
+			consumerID := common.ConsumerFunctionAwakePrefix
+			functionAwakeEvent := GetFunctionAwakeEvent(*function)
 			err = messenger.Subscribe(functionAwakeEvent, func(_ quebic_messenger.BaseEvent) {
 
 				//publish message
@@ -169,14 +164,14 @@ func StopFunction(
 	deployment dep.Deployment,
 	function *quebicFaasTypes.Function) error {
 
-	functionService := GetServiceID(function.GetID())
+	functionDeploymentID := GetDeploymentID(*function)
 
-	err := deployment.Delete(functionService)
+	err := deployment.DeleteDeployment(functionDeploymentID)
 	if err != nil {
 		return err
 	}
 
-	log.Printf("%s : stopped", functionService)
+	log.Printf("%s : deleted", functionDeploymentID)
 
 	return nil
 
@@ -203,9 +198,9 @@ func GetFunctionDetails(
 	deployment dep.Deployment,
 	function quebicFaasTypes.Function) (dep.Details, error) {
 
-	functionService := GetServiceID(function.GetID())
+	functionDeploymentID := GetDeploymentID(function)
 
-	details, err := deployment.ListByName(functionService)
+	details, err := deployment.GetDeployment(functionDeploymentID)
 	if err != nil {
 		return dep.Details{}, fmt.Errorf(common.KubeStatusFalse)
 	}
@@ -214,15 +209,31 @@ func GetFunctionDetails(
 
 }
 
-//GetServiceID get function service name
-func GetServiceID(functionID string) string {
-	return functionServicePrefix + functionID
+//GetID get function id
+func GetID(function quebicFaasTypes.Function) string {
+	return functionServicePrefix + function.GetID()
+}
+
+//GetDeploymentID get function deployment id
+func GetDeploymentID(function quebicFaasTypes.Function) string {
+	return GetID(function) + "-" + function.Version
+}
+
+//GetFunctionAwakeEvent get function awake event
+func GetFunctionAwakeEvent(function quebicFaasTypes.Function) string {
+	return common.EventPrefixFunctionAwakePrefix + function.GetID()
+}
+
+//GetNewVersionEvent get new version notify event
+func GetNewVersionEvent(function quebicFaasTypes.Function) string {
+	return common.EventNewVersionFunctionPrefix + function.GetID()
 }
 
 //functionDeploy callback
 func functionDeploy(
 	appConfig mgrconfig.AppConfig,
 	deployment dep.Deployment,
+	msg messenger.Messenger,
 	function *quebicFaasTypes.Function) (string, error) {
 
 	//validate runtime
@@ -230,7 +241,10 @@ func functionDeploy(
 		return "", fmt.Errorf("runtime not match")
 	}
 
-	functionService := GetServiceID(function.GetID())
+	functionID := GetID(*function)
+	functionDeploymentID := GetDeploymentID(*function)
+	functionVersion := function.Version
+
 	functionImage := function.DockerImageID
 	functionReplicas := function.Replicas
 
@@ -251,21 +265,31 @@ func functionDeploy(
 	}
 
 	deploymentSpec := dep.Spec{
-		Name:        functionService,
-		Dockerimage: functionImage,
-		PortConfigs: portConfigs,
-		Envkeys:     envkeys,
-		Replicas:    dep.Replicas(functionReplicas),
+		Name:            functionID,
+		DeploymentName:  functionDeploymentID,
+		Version:         functionVersion,
+		Dockerimage:     functionImage,
+		PortConfigs:     portConfigs,
+		Envkeys:         envkeys,
+		Replicas:        dep.Replicas(functionReplicas),
+		ImagePullPolicy: "IfNotPresent",
 	}
 
-	_, err := deployment.CreateOrUpdate(deploymentSpec)
+	err := deployment.CreateOrUpdateDeployment(deploymentSpec)
 	if err != nil {
 		return "", err
 	}
 
-	log.Printf("%s : deployed", functionService)
+	_, err = deployment.CreateService(deploymentSpec)
+	if err != nil {
+		return "", err
+	}
 
-	return functionService, nil
+	publishFunctionNewVersion(deployment, msg, *function)
+
+	log.Printf("%s : function is deployed", functionDeploymentID)
+
+	return functionDeploymentID, nil
 
 }
 
@@ -279,6 +303,8 @@ func prepareEnvKeys(
 	envkeys := make(map[string]string)
 
 	envkeys[common.EnvKey_appID] = function.GetID()
+	envkeys[common.EnvKey_deploymentID] = GetDeploymentID(*function)
+	envkeys[common.EnvKey_version] = function.Version
 
 	//eventbus configuration
 	if appConfig.Deployment == mgrconfig.Deployment_Docker {
@@ -292,9 +318,13 @@ func prepareEnvKeys(
 	envkeys[common.EnvKey_rabbitmq_exchange] = messenger.Exchange
 	envkeys[common.EnvKey_rabbitmq_management_username] = eventBusConfig.ManagementUserName
 	envkeys[common.EnvKey_rabbitmq_management_password] = eventBusConfig.ManagementPassword
+
 	envkeys[common.EnvKey_eventConst_eventPrefixUserDefined] = common.EventPrefixUserDefined
-	envkeys[common.EnvKey_eventConst_eventPrefixFunctionAwake] = common.EventPrefixFunctionAwake
-	envkeys[common.EnvKey_eventConst_eventLogListener] = common.EventRequestTracker
+	envkeys[common.EnvKey_eventConst_eventLog] = common.EventRequestTracker
+	envkeys[common.EnvKey_eventConst_eventFunctionAwake] = GetFunctionAwakeEvent(*function)
+	envkeys[common.EnvKey_eventConst_eventDataFetch] = common.EventFunctionDataFetch
+	envkeys[common.EnvKey_eventConst_eventNewVersion] = GetNewVersionEvent(*function)
+	envkeys[common.EnvKey_eventConst_eventShutDownRequest] = common.EventShutDownRequest
 
 	//events eg: e1,e2,e3,
 	eventsStr := ""
@@ -337,5 +367,65 @@ func getEventBoxConnStr(deployment dep.Deployment) (string, error) {
 	port := int(eventBoxDetails.PortConfigs[0].Port)
 
 	return fmt.Sprintf("http://%s:%d", host, port), nil
+
+}
+
+func publishFunctionNewVersion(
+	deployment dep.Deployment,
+	msg messenger.Messenger,
+	function quebicFaasTypes.Function) {
+
+	functionDeploymentID := GetDeploymentID(function)
+	waitForResponse := make(chan bool)
+
+	go func() {
+
+		for {
+
+			status, err := deployment.GetStatus(functionDeploymentID)
+			if err != nil {
+				log.Printf("%s new version published failed : %v", functionDeploymentID, err)
+				continue
+			}
+
+			if common.KubeStatusTrue == status {
+				waitForResponse <- true
+				break
+			}
+
+			time.Sleep(time.Second * 2)
+
+		}
+
+	}()
+
+	go func() {
+		//wait until new version aviable
+		select {
+		case <-waitForResponse:
+
+			//publish about new version
+			_, err := msg.Publish(
+				GetNewVersionEvent(function),
+				quebicFaasTypes.NewVersionMessage{
+					Version: function.Version,
+				},
+				nil,
+				nil,
+				nil,
+				0,
+			)
+			if err != nil {
+				log.Printf("%s new version published failed : %v", functionDeploymentID, err)
+				return
+			}
+
+			log.Printf("%s new version published verion : %v", functionDeploymentID, function.Version)
+
+		case <-time.After(time.Minute * 30):
+			log.Printf("%s new version published failed : still not available", functionDeploymentID)
+		}
+
+	}()
 
 }

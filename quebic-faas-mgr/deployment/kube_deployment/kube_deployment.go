@@ -16,7 +16,9 @@ package kube_deployment
 
 import (
 	"fmt"
+	"io"
 	"log"
+	"os"
 	"quebic-faas/quebic-faas-mgr/deployment"
 	"time"
 
@@ -26,21 +28,30 @@ import (
 	"k8s.io/api/core/v1"
 	apiv1 "k8s.io/api/core/v1"
 	extv1beta1 "k8s.io/api/extensions/v1beta1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
 	kubev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	typedextv1beta1 "k8s.io/client-go/kubernetes/typed/extensions/v1beta1"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
 	"quebic-faas/common"
 	quebictypes "quebic-faas/types"
+
+	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 )
 
-const kubeSelecterKey = "quebic-faas-app"
+const kubeSelecterKeyApp = "quebic-faas-app"
+const kubeSelecterKeyVersion = "quebic-faas-version"
+const kubeDefaultVersion = "v1"
 const kubeNamespace = "quebic-faas"
 const kubeIngressName = "quebic-faas-ingress"
+const kubeRoleAdmin = "quebic-faas-role-admin"
+const kubeVolumeFunctionDir = "quebic-faas-function-dir"
 const kubeIngressAvailableWaitTime = time.Minute * 10
 
 //Config kubernates config
@@ -50,7 +61,8 @@ type Config struct {
 
 //Deployment kube deployment
 type Deployment struct {
-	Config Config
+	Config   Config
+	InCluser bool //is kube client is inside the cluster
 }
 
 //DeploymentType implementation for deployment.DeploymentType()
@@ -60,14 +72,17 @@ func (kubeDeployment Deployment) DeploymentType() string {
 
 //Init implementation for deployment.Init()
 func (kubeDeployment Deployment) Init() error {
+	err := kubeDeployment.createAdminRole()
+	if err != nil {
+		return err
+	}
 
-	err := kubeDeployment.nameSpaceCreate()
+	err = kubeDeployment.createNameSpace()
 	if err != nil {
 		return err
 	}
 
 	return nil
-
 }
 
 //Create implementation for deployment.Create()
@@ -112,6 +127,87 @@ func (kubeDeployment Deployment) CreateOrUpdate(deploySpec deployment.Spec) (dep
 
 }
 
+//CreateOrUpdateDeployment implementation for deployment.CreateOrUpdateDeployment()
+func (kubeDeployment Deployment) CreateOrUpdateDeployment(spec deployment.Spec) error {
+
+	clientset, err := kubeDeployment.getClient()
+	if err != nil {
+		return err
+	}
+
+	err = kubeDeployment.deploymentUpdate(clientset, spec)
+	if err != nil {
+
+		if errors.IsNotFound(err) {
+
+			err = kubeDeployment.deploymentCreate(clientset, spec)
+			if err != nil {
+				return err
+			}
+
+		} else {
+			return err
+		}
+
+	}
+
+	return nil
+}
+
+//CreateOrUpdateService implementation for deployment.CreateOrUpdateService()
+func (kubeDeployment Deployment) CreateOrUpdateService(deploySpec deployment.Spec) (deployment.Details, error) {
+
+	clientset, err := kubeDeployment.getClient()
+	if err != nil {
+		return deployment.Details{}, err
+	}
+
+	var service *v1.Service
+
+	//service
+	service, err = kubeDeployment.serviceUpdate(clientset, deploySpec)
+	if err != nil {
+		if errors.IsNotFound(err) {
+
+			service, err = kubeDeployment.serviceCreate(clientset, deploySpec)
+			if err != nil {
+				return deployment.Details{}, err
+			}
+
+		} else {
+			return deployment.Details{}, err
+		}
+
+	}
+
+	return deployment.Details{
+		Host: service.Spec.ClusterIP,
+	}, nil
+}
+
+//CreateService implementation for deployment.CreateService()
+func (kubeDeployment Deployment) CreateService(deploySpec deployment.Spec) (deployment.Details, error) {
+
+	clientset, err := kubeDeployment.getClient()
+	if err != nil {
+		return deployment.Details{}, err
+	}
+
+	service, err := kubeDeployment.serviceCreate(clientset, deploySpec)
+	if err != nil {
+
+		if errors.IsAlreadyExists(err) {
+			return kubeDeployment.GetService(deploySpec.Name)
+		}
+		return deployment.Details{}, err
+
+	}
+
+	return deployment.Details{
+		Host: service.Spec.ClusterIP,
+	}, nil
+}
+
 //Delete implementation for deployment.Delete()
 func (kubeDeployment Deployment) Delete(name string) error {
 
@@ -123,6 +219,22 @@ func (kubeDeployment Deployment) Delete(name string) error {
 	return nil
 }
 
+//DeleteDeployment implementation for deployment.DeleteDeployment()
+func (kubeDeployment Deployment) DeleteDeployment(name string) error {
+
+	clientset, err := kubeDeployment.getClient()
+	if err != nil {
+		return err
+	}
+
+	deploymentsClient := clientset.AppsV1beta1().Deployments(kubeNamespace)
+
+	deletePolicy := metav1.DeletePropagationForeground
+	return deploymentsClient.Delete(name, &metav1.DeleteOptions{
+		PropagationPolicy: &deletePolicy,
+	})
+}
+
 //ListAll implementation for deployment.ListAll()
 func (kubeDeployment Deployment) ListAll(filters deployment.ListFilters) ([]deployment.Details, error) {
 	return nil, nil
@@ -131,17 +243,86 @@ func (kubeDeployment Deployment) ListAll(filters deployment.ListFilters) ([]depl
 //ListByName implementation for deployment.ListByName()
 func (kubeDeployment Deployment) ListByName(name string) (deployment.Details, error) {
 
+	clientset, err := kubeDeployment.getClient()
+	if err != nil {
+		return deployment.Details{}, err
+	}
+
+	details := deployment.Details{}
+
+	err = kubeDeployment.getService(name, &details, clientset)
+	if err != nil {
+		return deployment.Details{}, err
+	}
+
+	err = kubeDeployment.getDeployment(name, &details, clientset)
+	if err != nil {
+		return deployment.Details{}, err
+	}
+
+	//append details
+	return details, nil
+
+}
+
+//GetStatus implementation for deployment.GetStatus()
+func (kubeDeployment Deployment) GetStatus(name string) (string, error) {
+
+	details, err := kubeDeployment.GetDeployment(name)
+	if err != nil {
+		return "", err
+	}
+
+	return details.Status, nil
+
+}
+
+//GetDeployment implementation for deployment.GetDeployment()
+func (kubeDeployment Deployment) GetDeployment(name string) (deployment.Details, error) {
+
 	//deployment details
 	clientset, err := kubeDeployment.getClient()
 	if err != nil {
 		return deployment.Details{}, err
 	}
 
+	details := deployment.Details{}
+
+	err = kubeDeployment.getDeployment(name, &details, clientset)
+	if err != nil {
+		return deployment.Details{}, err
+	}
+
+	return details, nil
+
+}
+
+//GetService implementation for deployment.GetService()
+func (kubeDeployment Deployment) GetService(name string) (deployment.Details, error) {
+
+	//deployment details
+	clientset, err := kubeDeployment.getClient()
+	if err != nil {
+		return deployment.Details{}, err
+	}
+
+	details := deployment.Details{}
+	err = kubeDeployment.getService(name, &details, clientset)
+	if err != nil {
+		return deployment.Details{}, err
+	}
+
+	return details, nil
+
+}
+
+func (kubeDeployment Deployment) getDeployment(name string, details *deployment.Details, clientset *kubernetes.Clientset) error {
+
 	deploymentsClient := clientset.AppsV1beta1().Deployments(kubeNamespace)
 
 	deploymentDetails, err := deploymentsClient.Get(name, metav1.GetOptions{})
 	if err != nil {
-		return deployment.Details{}, err
+		return err
 	}
 
 	conditionStatus := common.KubeStatusFalse
@@ -168,11 +349,18 @@ func (kubeDeployment Deployment) ListByName(name string) (deployment.Details, er
 		pods = append(pods, deployment.Pod{Name: pod.Name})
 	}*/
 
+	details.Status = string(conditionStatus)
+	details.Replicas = deployment.Replicas(int(*deploymentDetails.Spec.Replicas))
+
+	return nil
+}
+
+func (kubeDeployment Deployment) getService(name string, details *deployment.Details, clientset *kubernetes.Clientset) error {
 	//service details
 	service := clientset.Core().Services(kubeNamespace)
 	serviceDetails, err := service.Get(name, metav1.GetOptions{})
 	if err != nil {
-		return deployment.Details{}, err
+		return err
 	}
 
 	host := serviceDetails.Spec.ClusterIP
@@ -187,22 +375,93 @@ func (kubeDeployment Deployment) ListByName(name string) (deployment.Details, er
 		})
 	}
 
-	//append details
-	return deployment.Details{
-		Status:      string(conditionStatus),
-		Host:        host,
-		PortConfigs: ports,
-	}, nil
+	details.Host = host
+	details.PortConfigs = ports
 
+	return nil
 }
 
 //LogsByName implementation for deployment.LogsByName()
-func (kubeDeployment Deployment) LogsByName(name string, options quebictypes.FunctionContainerLogOptions) (string, error) {
-	return "", nil
+func (kubeDeployment Deployment) LogsByName(name string, options quebictypes.FunctionContainerLogOptions) error {
+
+	replicaIndex := options.ReplicaIndex
+
+	containers, err := kubeDeployment.ListContainersByName(name)
+	if err != nil {
+		return err
+	}
+
+	containerID := containers[replicaIndex].ID
+
+	err = kubeDeployment.LogsByContainerID(containerID, options)
+	if err != nil {
+		return err
+	}
+
+	return nil
+
 }
 
-//KubeNameSpaceCreate create namespace
-func (kubeDeployment Deployment) nameSpaceCreate() error {
+//ListContainersByName implementation for deployment.ListContainersByName()
+func (kubeDeployment Deployment) ListContainersByName(name string) ([]deployment.Container, error) {
+
+	clientset, err := kubeDeployment.getClient()
+	if err != nil {
+		return nil, err
+	}
+
+	deploymentsClient := clientset.AppsV1beta1().Deployments(kubeNamespace)
+
+	deploymentDetails, err := deploymentsClient.Get(name, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	deploymentLabels := labels.Set(deploymentDetails.Labels).AsSelector().String()
+	podSpecs, err := clientset.Core().Pods(kubeNamespace).List(metav1.ListOptions{
+		LabelSelector: deploymentLabels,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	var containers []deployment.Container
+	for _, p := range podSpecs.Items {
+		containers = append(containers, deployment.Container{ID: p.Name})
+	}
+
+	return containers, nil
+
+}
+
+//LogsByContainerID implementation for deployment.LogsByContainerID()
+func (kubeDeployment Deployment) LogsByContainerID(id string, options quebictypes.FunctionContainerLogOptions) error {
+
+	logOptions := v1.PodLogOptions{}
+
+	clientset, err := kubeDeployment.getClient()
+	if err != nil {
+		return err
+	}
+
+	req := clientset.Core().Pods(kubeNamespace).GetLogs(id, &logOptions)
+
+	readCloser, err := req.Stream()
+	if err != nil {
+		return err
+	}
+
+	defer readCloser.Close()
+	_, err = io.Copy(os.Stdout, readCloser)
+	if err != nil {
+		return err
+	}
+
+	return nil
+
+}
+
+func (kubeDeployment Deployment) createNameSpace() error {
 
 	clientset, err := kubeDeployment.getClient()
 	if err != nil {
@@ -229,6 +488,44 @@ func (kubeDeployment Deployment) nameSpaceCreate() error {
 			return err
 		}
 	}
+
+	return nil
+
+}
+
+func (kubeDeployment Deployment) createAdminRole() error {
+
+	clientset, err := kubeDeployment.getClient()
+	if err != nil {
+		return err
+	}
+
+	roleSpec := &rbacv1.ClusterRoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: kubeRoleAdmin,
+		},
+		RoleRef: rbacv1.RoleRef{
+			Kind: "ClusterRole",
+			Name: "admin",
+		},
+		Subjects: []rbacv1.Subject{
+			{
+				Kind:      "ServiceAccount",
+				Name:      "default",
+				Namespace: kubeNamespace,
+			},
+		},
+	}
+	_, err = clientset.RbacV1().ClusterRoleBindings().Create(roleSpec)
+	if err != nil {
+		if !errors.IsAlreadyExists(err) {
+			return fmt.Errorf("kube-role-create failed : %v", err)
+		}
+
+		return nil
+	}
+
+	log.Printf("kube-role-created : %s", kubeRoleAdmin)
 
 	return nil
 
@@ -376,11 +673,21 @@ func (kubeDeployment Deployment) serviceDeleteByAppName(appName string) error {
 
 func (kubeDeployment Deployment) getClient() (*kubernetes.Clientset, error) {
 
-	kubeConfig := kubeDeployment.Config
+	var config *rest.Config
 
-	config, err := clientcmd.BuildConfigFromFlags("", kubeConfig.ConfigPath)
-	if err != nil {
-		return nil, fmt.Errorf("kube-config config getting failed %v", err)
+	if kubeDeployment.InCluser {
+		c, err := rest.InClusterConfig()
+		if err != nil {
+			return nil, fmt.Errorf("kube-in-cluster-config getting failed %v", err)
+		}
+		config = c
+	} else {
+		kubeConfig := kubeDeployment.Config
+		c, err := clientcmd.BuildConfigFromFlags("", kubeConfig.ConfigPath)
+		if err != nil {
+			return nil, fmt.Errorf("kube-config config getting failed %v", err)
+		}
+		config = c
 	}
 
 	clientset, err := kubernetes.NewForConfig(config)
@@ -397,8 +704,23 @@ func getDeploymentSpec(
 	spec deployment.Spec) *appsv1beta1.Deployment {
 
 	appName := spec.Name
+	version := spec.Version
+
+	if "" == spec.DeploymentName {
+		spec.DeploymentName = appName
+	}
+
+	if "" == version {
+		version = kubeDefaultVersion
+	}
+
 	dockerimage := spec.Dockerimage
 	replicas := int32Ptr(int32(spec.Replicas))
+
+	var imagePullPolicy = spec.ImagePullPolicy
+	if imagePullPolicy == "" {
+		imagePullPolicy = string(apiv1.PullAlways)
+	}
 
 	//ports
 	var ports []apiv1.ContainerPort
@@ -416,28 +738,71 @@ func getDeploymentSpec(
 		envVar = append(envVar, v1.EnvVar{Name: k, Value: v})
 	}
 
+	//volumes
+	var volumeMounts []v1.VolumeMount
+	var volumes []v1.Volume
+	for _, volume := range spec.Volumes {
+
+		//volumeMounts
+		containerPath := volume.ContainerPath
+		volumeMounts = append(
+			volumeMounts,
+			v1.VolumeMount{
+				Name:      kubeVolumeFunctionDir,
+				MountPath: containerPath,
+			})
+
+		//volumes
+		hostPath := volume.HostPath
+		hostPathDirectoryType := volume.HostPathType
+		volumeSource := v1.VolumeSource{
+			HostPath: &v1.HostPathVolumeSource{
+				Path: hostPath,
+				Type: &hostPathDirectoryType,
+			},
+		}
+
+		volumes = append(
+			volumes, v1.Volume{
+				Name:         kubeVolumeFunctionDir,
+				VolumeSource: volumeSource,
+			})
+
+	}
+
+	terminationGracePeriodSeconds := int64(0)
+
 	return &appsv1beta1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:   appName,
-			Labels: map[string]string{kubeSelecterKey: appName},
+			Name: spec.DeploymentName,
+			Labels: map[string]string{
+				kubeSelecterKeyApp:     appName,
+				kubeSelecterKeyVersion: version,
+			},
 		},
 		Spec: appsv1beta1.DeploymentSpec{
 			Replicas: replicas,
 			Template: apiv1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-						kubeSelecterKey: appName,
+						kubeSelecterKeyApp:     appName,
+						kubeSelecterKeyVersion: version,
 					},
 				},
 				Spec: apiv1.PodSpec{
 					Containers: []apiv1.Container{
 						{
-							Name:  appName,
-							Image: dockerimage,
-							Ports: ports,
-							Env:   envVar,
+							Name:            appName,
+							Image:           dockerimage,
+							Ports:           ports,
+							Env:             envVar,
+							VolumeMounts:    volumeMounts,
+							Command:         spec.Command,
+							ImagePullPolicy: apiv1.PullPolicy(imagePullPolicy),
 						},
 					},
+					Volumes:                       volumes,
+					TerminationGracePeriodSeconds: &terminationGracePeriodSeconds,
 				},
 			},
 		},
@@ -490,6 +855,11 @@ func getServiceSpec(
 	spec deployment.Spec) *v1.Service {
 
 	appName := spec.Name
+	version := spec.Version
+
+	if "" == version {
+		version = kubeDefaultVersion
+	}
 
 	//ports
 	var ports []v1.ServicePort
@@ -511,9 +881,12 @@ func getServiceSpec(
 			Name: appName,
 		},
 		Spec: v1.ServiceSpec{
-			Type:     v1.ServiceTypeNodePort,
-			Selector: map[string]string{kubeSelecterKey: appName},
-			Ports:    ports,
+			Type: v1.ServiceTypeNodePort,
+			Selector: map[string]string{
+				kubeSelecterKeyApp: appName,
+				//kubeSelecterKeyVersion: version,
+			},
+			Ports: ports,
 		},
 	}
 
@@ -579,60 +952,71 @@ func (kubeDeployment Deployment) getServiceByAppName(service kubev1.ServiceInter
 
 }
 
-//IngressInspect ingress get details
-func IngressInspect(kubeDeployment Deployment) (*extv1beta1.Ingress, error) {
+//IngressDescribe ingress get details
+func (kubeDeployment Deployment) IngressDescribe(waitForAvailable bool) (deployment.IngressDetails, error) {
 
-	ingress, err := ingressInspect(kubeDeployment)
+	clientset, err := kubeDeployment.getClient()
 	if err != nil {
-		log.Printf("kube-ingress-inspect-failed : %v", err)
-		return nil, err
+		return deployment.IngressDetails{}, err
 	}
 
-	return ingress, nil
+	ingressesClient := clientset.ExtensionsV1beta1().Ingresses(kubeNamespace)
 
-}
-
-//IngressLoadbalancerIP ingress get lb ip
-func IngressLoadbalancerIP(kubeDeployment Deployment) (string, error) {
-
-	ingress, err := ingressInspect(kubeDeployment)
+	ingress, err := ingressesClient.Get(kubeIngressName, metav1.GetOptions{})
 	if err != nil {
-		log.Printf("kube-ingress-inspect-failed : %v", err)
-		return "", err
+		log.Printf("kube-ingress inspect-failed : %v", err)
+		return deployment.IngressDetails{}, err
 	}
 
-	return getIngressLoadbalancerIP(ingress), nil
+	if waitForAvailable {
+		err = waitingForIngressAvailable(ingressesClient)
+		if err != nil {
+			return deployment.IngressDetails{}, err
+		}
+	} else {
+		chk := checkIngressLoadbalancerIP(ingress)
+		if !chk {
+			return deployment.IngressDetails{}, fmt.Errorf("kube-ingress not ready yet")
+		}
+	}
+
+	lb := ingress.Status.LoadBalancer.Ingress[0]
+	hostname := lb.Hostname
+	ip := lb.IP
+
+	return deployment.IngressDetails{
+		Hostname: hostname,
+		IP:       ip,
+	}, nil
 
 }
 
 //IngressCreateOrUpdate ingress update or create
-func IngressCreateOrUpdate(
-	kubeDeployment Deployment,
-	apiGatewayConfig config.APIGatewayConfig) (*extv1beta1.Ingress, error) {
+func (kubeDeployment Deployment) IngressCreateOrUpdate(spec deployment.IngressSpec) error {
 
-	ingress, err := ingressUpdate(kubeDeployment, apiGatewayConfig)
+	_, err := kubeDeployment.ingressUpdate(spec)
 	if err != nil {
 
 		if errors.IsNotFound(err) {
 
-			ingress, err = ingressCreate(kubeDeployment, apiGatewayConfig)
+			_, err = kubeDeployment.ingressCreate(spec)
 			if err != nil {
-				log.Printf("kube-ingress-create-failed : %v", err)
-				return nil, err
+				log.Printf("kube-ingress create-failed : %v", err)
+				return err
 			}
 
 		} else {
-			log.Printf("kube-ingress-update-failed : %v", err)
-			return nil, err
+			log.Printf("kube-ingress update-failed : %v", err)
+			return err
 		}
 
 	}
 
-	return ingress, nil
+	return nil
 
 }
 
-func ingressInspect(kubeDeployment Deployment) (*extv1beta1.Ingress, error) {
+func (kubeDeployment Deployment) ingressInspect() (*extv1beta1.Ingress, error) {
 
 	clientset, err := kubeDeployment.getClient()
 	if err != nil {
@@ -645,9 +1029,7 @@ func ingressInspect(kubeDeployment Deployment) (*extv1beta1.Ingress, error) {
 
 }
 
-func ingressCreate(
-	kubeDeployment Deployment,
-	apiGatewayConfig config.APIGatewayConfig) (*extv1beta1.Ingress, error) {
+func (kubeDeployment Deployment) ingressCreate(spec deployment.IngressSpec) (*extv1beta1.Ingress, error) {
 
 	clientset, err := kubeDeployment.getClient()
 	if err != nil {
@@ -656,14 +1038,9 @@ func ingressCreate(
 
 	ingressesClient := clientset.ExtensionsV1beta1().Ingresses(kubeNamespace)
 
-	ingressSpec := getIngressSpec(apiGatewayConfig)
+	ingressSpec := kubeDeployment.getIngressSpec(spec)
 
 	ingress, err := ingressesClient.Create(ingressSpec)
-	if err != nil {
-		return nil, err
-	}
-
-	err = waitingForIngressAvailable(ingressesClient)
 	if err != nil {
 		return nil, err
 	}
@@ -674,9 +1051,7 @@ func ingressCreate(
 
 }
 
-func ingressUpdate(
-	kubeDeployment Deployment,
-	apiGatewayConfig config.APIGatewayConfig) (*extv1beta1.Ingress, error) {
+func (kubeDeployment Deployment) ingressUpdate(spec deployment.IngressSpec) (*extv1beta1.Ingress, error) {
 
 	clientset, err := kubeDeployment.getClient()
 	if err != nil {
@@ -685,7 +1060,7 @@ func ingressUpdate(
 
 	ingressesClient := clientset.ExtensionsV1beta1().Ingresses(kubeNamespace)
 
-	ingressSpec := getIngressSpec(apiGatewayConfig)
+	ingressSpec := kubeDeployment.getIngressSpec(spec)
 
 	ingress, err := ingressesClient.Update(ingressSpec)
 	if err != nil {
@@ -698,40 +1073,18 @@ func ingressUpdate(
 
 }
 
-func getIngressSpec(apiGatewayConfig config.APIGatewayConfig) *extv1beta1.Ingress {
-
-	apiGatewayPort := int32(apiGatewayConfig.ServerConfig.Port)
-	ingressConfig := apiGatewayConfig.IngressConfig
+func (kubeDeployment Deployment) getIngressSpec(spec deployment.IngressSpec) *extv1beta1.Ingress {
 
 	annotations := make(map[string]string)
 
-	if ingressConfig.Provider == "" {
-		annotations[common.IngressClass] = common.IngressNginx
-	} else {
-		annotations[ingressConfig.Provider] = ingressConfig.StaticIP
+	annotations[common.IngressAnnotationRewriteTarget] = common.IngressAnnotationRewriteTargetVal
+
+	if spec.StaticIPName != "" {
+		annotations[common.IngressAnnotationStaticIP] = spec.StaticIPName
 	}
 
-	ingressBackend := extv1beta1.IngressBackend{
-		ServiceName: common.ComponentAPIGateway,
-		ServicePort: intstr.IntOrString{
-			Type:   intstr.Int,
-			IntVal: apiGatewayPort,
-		},
-	}
-
-	httpIngressPath := extv1beta1.HTTPIngressPath{
-		Backend: ingressBackend,
-		Path:    ingressConfig.RoutePrefix,
-	}
-
-	ingressRule := extv1beta1.IngressRule{
-		Host: "quebic-faas-api.io",
-		IngressRuleValue: extv1beta1.IngressRuleValue{
-			HTTP: &extv1beta1.HTTPIngressRuleValue{
-				Paths: []extv1beta1.HTTPIngressPath{httpIngressPath},
-			},
-		},
-	}
+	managerAPIIngressRule := getIngressRule(common.IngressHostManager, common.ComponentMgrAPI, common.MgrServerPort, common.IngressRoutePrefixManagerAPI)
+	apiGatewayIngressRule := getIngressRule(common.IngressHostAPIGateway, common.ComponentAPIGateway, common.ApigatewayServerPort, common.IngressRoutePrefixAPIGateway)
 
 	ingressSpec := &extv1beta1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
@@ -739,11 +1092,39 @@ func getIngressSpec(apiGatewayConfig config.APIGatewayConfig) *extv1beta1.Ingres
 			Annotations: annotations,
 		},
 		Spec: extv1beta1.IngressSpec{
-			Rules: []extv1beta1.IngressRule{ingressRule},
+			Rules: []extv1beta1.IngressRule{
+				managerAPIIngressRule,
+				apiGatewayIngressRule,
+			},
 		},
 	}
 
 	return ingressSpec
+
+}
+
+func getIngressRule(host string, service string, port int, routePrefix string) extv1beta1.IngressRule {
+
+	ingressBackend := extv1beta1.IngressBackend{
+		ServiceName: service,
+		ServicePort: intstr.IntOrString{
+			Type:   intstr.Int,
+			IntVal: int32(port),
+		},
+	}
+
+	httpIngressPath := extv1beta1.HTTPIngressPath{
+		Backend: ingressBackend,
+	}
+
+	return extv1beta1.IngressRule{
+		Host: host,
+		IngressRuleValue: extv1beta1.IngressRuleValue{
+			HTTP: &extv1beta1.HTTPIngressRuleValue{
+				Paths: []extv1beta1.HTTPIngressPath{httpIngressPath},
+			},
+		},
+	}
 
 }
 
@@ -753,7 +1134,7 @@ func waitingForIngressAvailable(ingressClient typedextv1beta1.IngressInterface) 
 
 	go func() {
 
-		log.Printf("waiting for ingress available")
+		log.Printf("waiting for ingress available...")
 
 		for {
 
@@ -763,25 +1144,22 @@ func waitingForIngressAvailable(ingressClient typedextv1beta1.IngressInterface) 
 				break
 			}
 
-			lbIP := getIngressLoadbalancerIP(ingress)
-			if lbIP != "" {
+			chkLbIP := checkIngressLoadbalancerIP(ingress)
+			if chkLbIP {
 				waitForResponse <- true
 				break
 			}
 
 			time.Sleep(time.Second * 2)
 
-			fmt.Print(".")
-
 		}
-		fmt.Println("")
 	}()
 
 	select {
 	case status := <-waitForResponse:
 
 		if !status {
-			return fmt.Errorf("kube-ingress-inspect failed")
+			return fmt.Errorf("kube-ingress inspect failed")
 		}
 
 		return nil
@@ -792,15 +1170,14 @@ func waitingForIngressAvailable(ingressClient typedextv1beta1.IngressInterface) 
 
 }
 
-func getIngressLoadbalancerIP(ingress *extv1beta1.Ingress) string {
+func checkIngressLoadbalancerIP(ingress *extv1beta1.Ingress) bool {
 
 	lbs := ingress.Status.LoadBalancer.Ingress
 	if len(lbs) > 0 {
-		lb := lbs[0]
-		return lb.IP
+		return true
 	}
 
-	return ""
+	return false
 }
 
 func int32Ptr(i int32) *int32 { return &i }

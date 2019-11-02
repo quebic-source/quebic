@@ -19,80 +19,62 @@ import (
 	"log"
 	"quebic-faas/common"
 	"quebic-faas/quebic-faas-mgr/config"
-
-	"github.com/docker/go-connections/nat"
+	dep "quebic-faas/quebic-faas-mgr/deployment"
 )
 
-//MgrDashboardSetup MgrDashboardSetup
-func MgrDashboardSetup(appConfig *config.AppConfig) error {
+const mgrDashboardReplicas = 1
+
+//MgrDashboardSetup mgr ui setup
+func MgrDashboardSetup(appConfig *config.AppConfig, deployment dep.Deployment) error {
 
 	componentID := common.ComponentMgrDashboard
 	log.Printf("%s : starting", componentID)
 
-	mgrDashboardPort := appConfig.MgrDashboardConfig.ServerConfig.Port
+	portConfig := getMgrDashboardPortConfig()
 
-	containerDetails, err := common.DockerContainerInspect(componentID)
-	if err == nil {
-
-		//if found previous running mgr-dashboard remove it
-		err = common.DockerContainerRemove(containerDetails.ID)
-		if err != nil {
-			return fmt.Errorf("%s-component : previous container removed failed", componentID)
-		}
-
+	mgrAPIDetails, err := deployment.ListByName(common.ComponentMgrAPI)
+	if err != nil {
+		return fmt.Errorf("unable to get manager-api host : %v", err)
 	}
 
-	portMap := getMgrDashboardPortMap(mgrDashboardPort)
-	exposedPort := getMgrDashboardExposedPort()
+	mgrAPIHost := mgrAPIDetails.Host
+	mgrAPIPort := mgrAPIDetails.PortConfigs[0].Port
+	mgrAPI := mgrAPIHost + ":" + common.IntToStr(int(mgrAPIPort))
 
-	authConfig, err := appConfig.DockerConfig.GetDockerAuthConfig()
-	if err != nil {
-		return err
+	envkeys := make(map[string]string)
+	envkeys[common.EnvKey_mgrAPI] = mgrAPI
+
+	deploymentSpec := dep.Spec{
+		Name:        componentID,
+		Dockerimage: common.MgrDashboardImage,
+		PortConfigs: portConfig,
+		Envkeys:     envkeys,
+		Replicas:    mgrDashboardReplicas,
 	}
 
-	//mgr-dashboard never run before
-	_, err = common.DockerContainerStart(
-		authConfig,
-		componentID,
-		common.MgrDashboardImage,
-		exposedPort,
-		portMap,
-		"",
-		nil,
-	)
+	_, err = deployment.CreateOrUpdate(deploymentSpec)
 	if err != nil {
-		return fmt.Errorf("%s container start failed : %s", componentID, err.Error())
+		return fmt.Errorf("%s setup-failed : %v", componentID, err)
 	}
 
 	log.Printf("%s : started", componentID)
 
 	return nil
+
 }
 
-func getMgrDashboardPortMap(mgrDashboardPort int) nat.PortMap {
+func getMgrDashboardPortConfig() []dep.PortConfig {
 
-	commonMgrDashboardPort := nat.Port(common.IntToStr(common.MgrDashboardPort))
+	mgrDashboardPort := dep.Port(common.MgrDashboardPort)
 
-	portMap := nat.PortMap{
-		commonMgrDashboardPort: []nat.PortBinding{
-			{
-				HostPort: common.IntToStr(mgrDashboardPort),
-			},
+	portConfigs := []dep.PortConfig{
+		dep.PortConfig{
+			Name:       "mgr-dashboard",
+			Port:       mgrDashboardPort,
+			TargetPort: mgrDashboardPort,
 		},
 	}
 
-	return portMap
-
-}
-
-func getMgrDashboardExposedPort() nat.PortSet {
-
-	exposedPort := nat.Port(common.IntToStr(common.MgrDashboardPort))
-
-	exposedPortSet := nat.PortSet{
-		exposedPort: struct{}{},
-	}
-
-	return exposedPortSet
+	return portConfigs
 
 }

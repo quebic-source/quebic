@@ -20,23 +20,34 @@ import (
 	"quebic-faas/common"
 	"quebic-faas/messenger"
 	"quebic-faas/quebic-faas-mgr/config"
+	"quebic-faas/quebic-faas-mgr/dao"
 	dep "quebic-faas/quebic-faas-mgr/deployment"
+	"quebic-faas/types"
+	"time"
 
+	bolt "github.com/coreos/bbolt"
 	uuid "github.com/satori/go.uuid"
 )
 
-const apigatewayReplicas = 1
-
 //ApigatewaySetup apigateway setup
-func ApigatewaySetup(appConfig *config.AppConfig, deployment dep.Deployment) error {
+func ApigatewaySetup(appConfig *config.AppConfig, db *bolt.DB, deployment dep.Deployment, msg messenger.Messenger) error {
 
 	componentID := common.ComponentAPIGateway
 	log.Printf("%s : starting", componentID)
 
+	apiGateway, err := dao.ManagerComponentSetupAPIGateway(db)
+	if err != nil {
+		return fmt.Errorf("%s setup-failed : %v", componentID, err)
+	}
+
+	apiGatewayVersion := apiGateway.Version
+	apiGatewayDeploymentName := prepareAPIGatewayDeplymentName(apiGatewayVersion)
+	apiGatewayReplicas := dep.Replicas(appConfig.APIGatewayConfig.Replicas)
+
 	//port details always come from config settings
 	apiGatewayPort := appConfig.APIGatewayConfig.ServerConfig.Port
 
-	portConfig := getApigatewayPortConfig(apiGatewayPort)
+	portConfig := getAPIGatewayPortConfig(apiGatewayPort)
 
 	//always when starting manager, component are setup
 	accessKeyUUID, err := uuid.NewV4()
@@ -45,6 +56,10 @@ func ApigatewaySetup(appConfig *config.AppConfig, deployment dep.Deployment) err
 	}
 
 	envkeys := make(map[string]string)
+
+	envkeys[common.EnvKey_appID] = componentID
+	envkeys[common.EnvKey_deploymentID] = apiGatewayDeploymentName
+	envkeys[common.EnvKey_version] = apiGatewayVersion
 	envkeys[common.EnvKeyAPIGateWayAccessKey] = accessKeyUUID.String()
 
 	//eventbus
@@ -54,21 +69,28 @@ func ApigatewaySetup(appConfig *config.AppConfig, deployment dep.Deployment) err
 	envkeys[common.EnvKey_rabbitmq_port] = common.IntToStr(eventBusConfig.AMQPPort)
 	envkeys[common.EnvKey_rabbitmq_management_username] = eventBusConfig.ManagementUserName
 	envkeys[common.EnvKey_rabbitmq_management_password] = eventBusConfig.ManagementPassword
-	envkeys[common.EnvKey_eventConst_eventPrefixUserDefined] = common.EventPrefixUserDefined
-	envkeys[common.EnvKey_eventConst_eventLogListener] = common.EventRequestTracker
 
 	deploymentSpec := dep.Spec{
-		Name:        componentID,
-		Dockerimage: common.ApigatewayImage,
-		PortConfigs: portConfig,
-		Envkeys:     envkeys,
-		Replicas:    apigatewayReplicas,
+		Name:           componentID,
+		Version:        apiGatewayVersion,
+		DeploymentName: apiGatewayDeploymentName,
+		Dockerimage:    common.ApigatewayImage,
+		PortConfigs:    portConfig,
+		Envkeys:        envkeys,
+		Replicas:       apiGatewayReplicas,
 	}
 
-	details, err := deployment.CreateOrUpdate(deploymentSpec)
+	err = deployment.CreateOrUpdateDeployment(deploymentSpec)
 	if err != nil {
 		return fmt.Errorf("%s setup-failed : %v", componentID, err)
 	}
+
+	details, err := deployment.CreateService(deploymentSpec)
+	if err != nil {
+		return fmt.Errorf("%s setup-failed : %v", componentID, err)
+	}
+
+	publishAPIGatewayNewVersion(apiGatewayDeploymentName, apiGatewayVersion, deployment, msg)
 
 	host := details.Host
 	appConfig.APIGatewayConfig.ServerConfig.Host = host
@@ -79,7 +101,11 @@ func ApigatewaySetup(appConfig *config.AppConfig, deployment dep.Deployment) err
 
 }
 
-func getApigatewayPortConfig(apigatewayPort int) []dep.PortConfig {
+func prepareAPIGatewayDeplymentName(version string) string {
+	return common.ComponentAPIGateway + "-v" + version
+}
+
+func getAPIGatewayPortConfig(apigatewayPort int) []dep.PortConfig {
 
 	targetApigatewayPort := dep.Port(common.ApigatewayServerPort)
 
@@ -94,5 +120,61 @@ func getApigatewayPortConfig(apigatewayPort int) []dep.PortConfig {
 	}
 
 	return portConfigs
+
+}
+
+func publishAPIGatewayNewVersion(deploymentName string, version string, deployment dep.Deployment, msg messenger.Messenger) {
+
+	waitForResponse := make(chan bool)
+
+	go func() {
+
+		for {
+
+			status, err := deployment.GetStatus(deploymentName)
+			if err != nil {
+				log.Printf("%s new version published failed : %v", deploymentName, err)
+				continue
+			}
+
+			if common.KubeStatusTrue == status {
+				waitForResponse <- true
+				break
+			}
+
+			time.Sleep(time.Second * 2)
+
+		}
+
+	}()
+
+	go func() {
+		//wait until new version aviable
+		select {
+		case <-waitForResponse:
+
+			//publish about new version
+			_, err := msg.Publish(
+				common.EventNewVersionAPIGateway,
+				types.NewVersionMessage{
+					Version: version,
+				},
+				nil,
+				nil,
+				nil,
+				0,
+			)
+			if err != nil {
+				log.Printf("%s new version published failed : %v", deploymentName, err)
+				return
+			}
+
+			log.Printf("%s new version published verion : %v", common.ComponentAPIGateway, version)
+
+		case <-time.After(time.Minute * 30):
+			log.Printf("%s new version published failed : still not available", deploymentName)
+		}
+
+	}()
 
 }

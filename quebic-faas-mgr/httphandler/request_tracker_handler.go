@@ -16,6 +16,7 @@ package httphandler
 
 import (
 	"net/http"
+	"quebic-faas/auth"
 
 	"github.com/gorilla/mux"
 )
@@ -23,7 +24,9 @@ import (
 //RequestTrackerHandler request-tracker handler
 func (httphandler *Httphandler) RequestTrackerHandler(router *mux.Router) {
 
-	router.HandleFunc("/request-trackers", func(w http.ResponseWriter, r *http.Request) {
+	authConfig := httphandler.config.Auth
+
+	router.HandleFunc("/request-trackers", validateMiddleware(func(w http.ResponseWriter, r *http.Request) {
 
 		qID := r.FormValue("id")
 		if qID == "" {
@@ -48,9 +51,9 @@ func (httphandler *Httphandler) RequestTrackerHandler(router *mux.Router) {
 
 		writeResponse(w, rt, http.StatusOK)
 
-	}).Methods("GET")
+	}, auth.RoleAny, authConfig)).Methods("GET")
 
-	router.HandleFunc("/request-trackers/{requestID}", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/request-trackers/{requestID}", validateMiddleware(func(w http.ResponseWriter, r *http.Request) {
 
 		params := mux.Vars(r)
 		requestID := params["requestID"]
@@ -62,6 +65,6 @@ func (httphandler *Httphandler) RequestTrackerHandler(router *mux.Router) {
 
 		writeResponse(w, rt, http.StatusOK)
 
-	}).Methods("GET")
+	}, auth.RoleAny, authConfig)).Methods("GET")
 
 }

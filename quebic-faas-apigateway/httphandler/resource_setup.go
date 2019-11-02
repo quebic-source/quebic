@@ -32,7 +32,9 @@ func (httphandler *Httphandler) createHandler(router *mux.Router, resource types
 	requestMethod := resource.RequestMethod
 
 	router.HandleFunc(url, func(w http.ResponseWriter, r *http.Request) {
+		httphandler.usageUp()
 		httphandler.eventInvoke(w, r, resource)
+		httphandler.usageDown()
 	}).Methods(requestMethod)
 
 }

@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"quebic-faas/auth"
 	"quebic-faas/common"
 	"quebic-faas/quebic-faas-mgr/dao"
 	"quebic-faas/types"
@@ -33,9 +34,11 @@ func (httphandler *Httphandler) ResourceHandler(router *mux.Router) {
 
 	db := httphandler.db
 	appConfig := httphandler.config
+	authConfig := appConfig.Auth
 	deployment := httphandler.deployment
+	messenger := httphandler.messenger
 
-	router.HandleFunc("/routes", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/routes", validateMiddleware(func(w http.ResponseWriter, r *http.Request) {
 
 		qID := r.FormValue("id")
 		if qID == "" {
@@ -47,9 +50,9 @@ func (httphandler *Httphandler) ResourceHandler(router *mux.Router) {
 		resource.ID = qID
 		getByID(w, r, db, resource)
 
-	}).Methods("GET")
+	}, auth.RoleAny, authConfig)).Methods("GET")
 
-	router.HandleFunc("/routes/{name}", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/routes/{name}", validateMiddleware(func(w http.ResponseWriter, r *http.Request) {
 
 		params := mux.Vars(r)
 		routeName := params["name"]
@@ -76,9 +79,9 @@ func (httphandler *Httphandler) ResourceHandler(router *mux.Router) {
 
 		writeResponse(w, route, 200)
 
-	}).Methods("GET")
+	}, auth.RoleAny, authConfig)).Methods("GET")
 
-	router.HandleFunc("/routes", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/routes", validateMiddleware(func(w http.ResponseWriter, r *http.Request) {
 
 		resource := &types.Resource{}
 		err := processRequest(r, resource)
@@ -104,11 +107,11 @@ func (httphandler *Httphandler) ResourceHandler(router *mux.Router) {
 
 		add(w, r, db, resource)
 
-		restartAPIGateway(appConfig, deployment)
+		restartAPIGateway(appConfig, db, deployment, messenger)
 
-	}).Methods("POST")
+	}, auth.RoleAny, authConfig)).Methods("POST")
 
-	router.HandleFunc("/routes", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/routes", validateMiddleware(func(w http.ResponseWriter, r *http.Request) {
 
 		resource := &types.Resource{}
 		err := processRequest(r, resource)
@@ -134,9 +137,9 @@ func (httphandler *Httphandler) ResourceHandler(router *mux.Router) {
 
 		update(w, r, db, resource)
 
-		restartAPIGateway(appConfig, deployment)
+		restartAPIGateway(appConfig, db, deployment, messenger)
 
-	}).Methods("PUT")
+	}, auth.RoleAny, authConfig)).Methods("PUT")
 
 }
 

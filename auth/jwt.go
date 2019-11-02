@@ -12,13 +12,26 @@
 //    See the License for the specific language governing permissions and
 //    limitations under the License.
 
-package common
+package auth
 
-//IngressClass ingress
-const IngressClass = "kubernetes.io/ingress.class"
+import (
+	jwt "github.com/dgrijalva/jwt-go"
+)
 
-//IngressNginx nginx
-const IngressNginx = "nginx"
+const ClaimsUsername = "username"
+const ClaimsFirstname = "firstname"
+const ClaimsRole = "role"
 
-//IngressRoutePrefix ingress route prefix
-const IngressRoutePrefix = "/api"
+//CreateJWTToken create jwt token
+func CreateJWTToken(claims jwt.MapClaims, secret string) (string, error) {
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	tokenString, err := token.SignedString([]byte(secret))
+	if err != nil {
+		return "", err
+	}
+
+	return tokenString, nil
+
+}

@@ -20,6 +20,7 @@ package httphandler
 
 import (
 	"net/http"
+	"quebic-faas/auth"
 	"quebic-faas/common"
 	"quebic-faas/quebic-faas-mgr/components"
 	dep "quebic-faas/quebic-faas-mgr/deployment"
@@ -32,9 +33,10 @@ import (
 func (httphandler *Httphandler) EventBoxHandler(router *mux.Router) {
 
 	appConfig := httphandler.config
+	authConfig := appConfig.Auth
 	deployment := httphandler.deployment
 
-	router.HandleFunc("/eventbox/start", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/eventbox/start", validateMiddleware(func(w http.ResponseWriter, r *http.Request) {
 
 		_, _, err := components.EventBoxSetup(appConfig, deployment)
 		if err != nil {
@@ -50,9 +52,9 @@ func (httphandler *Httphandler) EventBoxHandler(router *mux.Router) {
 
 		writeResponse(w, component, http.StatusOK)
 
-	}).Methods("POST")
+	}, auth.RoleAny, authConfig)).Methods("POST")
 
-	router.HandleFunc("/eventbox/info", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/eventbox/info", validateMiddleware(func(w http.ResponseWriter, r *http.Request) {
 
 		component, err := getEventBox(deployment)
 		if err != nil {
@@ -62,7 +64,7 @@ func (httphandler *Httphandler) EventBoxHandler(router *mux.Router) {
 
 		writeResponse(w, component, http.StatusOK)
 
-	}).Methods("GET")
+	}, auth.RoleAny, authConfig)).Methods("GET")
 
 }
 

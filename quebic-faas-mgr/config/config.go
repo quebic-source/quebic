@@ -15,7 +15,9 @@
 package config
 
 import (
+	"log"
 	"path/filepath"
+	"quebic-faas/auth"
 	"quebic-faas/common"
 	"quebic-faas/config"
 
@@ -31,7 +33,9 @@ type AppConfig struct {
 	KubernetesConfig   KubeConfig            `json:"kubernetesConfig"`
 	EventBusConfig     config.EventBusConfig `json:"eventBusConfig"`
 	APIGatewayConfig   APIGatewayConfig      `json:"apiGatewayConfig"`
+	IngressConfig      IngressConfig         `json:"ingressConfig" yaml:"ingressConfig"`
 	MgrDashboardConfig MgrDashboardConfig    `json:"mgrDashboardConfig"`
+	InCluster          bool                  `json:"inCluster"`
 	Deployment         string                `json:"deployment"`
 }
 
@@ -43,7 +47,9 @@ type SavingConfig struct {
 	KubernetesConfig   KubeConfig            `json:"kubernetesConfig" yaml:"kubernetesConfig"`
 	EventBusConfig     config.EventBusConfig `json:"eventBusConfig" yaml:"eventBusConfig"`
 	APIGatewayConfig   APIGatewayConfig      `json:"apiGatewayConfig" yaml:"apiGatewayConfig"`
+	IngressConfig      IngressConfig         `json:"ingressConfig" yaml:"ingressConfig"`
 	MgrDashboardConfig MgrDashboardConfig    `json:"mgrDashboardConfig" yaml:"mgrDashboardConfig"`
+	InCluster          bool                  `json:"inCluster"`
 	Deployment         string                `json:"deployment" yaml:"deployment"`
 }
 
@@ -52,7 +58,7 @@ func (appConfig *AppConfig) SetDefault() {
 
 	appConfig.AppID = "quebic-faas-mgr"
 
-	appConfig.Auth = AuthConfig{Username: "admin", Password: "admin"}
+	appConfig.Auth = prepareDefaultAuthConfig()
 
 	appConfig.ServerConfig = config.ServerConfig{
 		Host: common.HostMachineIP,
@@ -73,9 +79,7 @@ func (appConfig *AppConfig) SetDefault() {
 			Host: common.HostMachineIP,
 			Port: common.ApigatewayServerPort,
 		},
-		IngressConfig: IngressConfig{
-			RoutePrefix: common.IngressRoutePrefix,
-		},
+		Replicas: common.ComponentAPIGatewayDefaultReplicas,
 	}
 
 	appConfig.MgrDashboardConfig = MgrDashboardConfig{
@@ -85,9 +89,13 @@ func (appConfig *AppConfig) SetDefault() {
 		},
 	}
 
+	appConfig.IngressConfig = IngressConfig{}
+
 	appConfig.DockerConfig = DockerConfig{RegistryAddress: ""}
 
 	appConfig.KubernetesConfig = KubeConfig{ConfigPath: filepath.Join(homedir.HomeDir(), ".kube", "config")}
+
+	appConfig.InCluster = true
 
 	appConfig.Deployment = Deployment_Kubernetes
 
@@ -96,21 +104,21 @@ func (appConfig *AppConfig) SetDefault() {
 //AuthConfig authConfig
 //Auth for connect manager
 type AuthConfig struct {
-	Username string `json:"username" yaml:"username"`
-	Password string `json:"password" yaml:"password"`
+	Username  string `json:"username" yaml:"username"`
+	Password  string `json:"password" yaml:"password"`
+	JWTSecret string `json:"jwtSecret" yaml:"jwtSecret"`
 }
 
 //APIGatewayConfig apigateway config
 type APIGatewayConfig struct {
-	ServerConfig  config.ServerConfig `json:"serverConfig" yaml:"serverConfig"`
-	IngressConfig IngressConfig       `json:"ingressConfig" yaml:"ingressConfig"`
+	ServerConfig config.ServerConfig `json:"serverConfig" yaml:"serverConfig"`
+	Replicas     int                 `json:"replicas" yaml:"replicas"`
 }
 
 //IngressConfig config for ingress controller
 type IngressConfig struct {
-	Provider    string `json:"provider" yaml:"provider"`
-	StaticIP    string `json:"staticIP" yaml:"staticIP"`
-	RoutePrefix string `json:"routePrefix" yaml:"routePrefix"`
+	Provider string `json:"provider" yaml:"provider"`
+	StaticIP string `json:"staticIP" yaml:"staticIP"`
 }
 
 //DockerConfig docker confog
@@ -126,4 +134,16 @@ type KubeConfig struct {
 //MgrDashboardConfig mgrDashboardConfig config
 type MgrDashboardConfig struct {
 	ServerConfig config.ServerConfig `json:"serverConfig" yaml:"serverConfig"`
+}
+
+func prepareDefaultAuthConfig() AuthConfig {
+	jwtSecret, err := auth.GenerateRandomString(32)
+	if err != nil {
+		log.Fatalf("unable to create auth secret")
+	}
+	return AuthConfig{
+		Username:  auth.DefaultUsername,
+		Password:  auth.DefaultPassword,
+		JWTSecret: jwtSecret,
+	}
 }

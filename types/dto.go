@@ -43,14 +43,15 @@ type FunctionContainerLogDTO struct {
 
 //FunctionContainerLogOptions extra options
 type FunctionContainerLogOptions struct {
-	ShowStdout bool   `json:"showStdout"`
-	ShowStderr bool   `json:"showStderr"`
-	Since      string `json:"since"`
-	Until      string `json:"until"`
-	Timestamps bool   `json:"timestamps"`
-	Follow     bool   `json:"follow"`
-	Tail       string `json:"tail"`
-	Details    bool   `json:"details"`
+	ReplicaIndex int    `json:"replicaIndex"`
+	ShowStdout   bool   `json:"showStdout"`
+	ShowStderr   bool   `json:"showStderr"`
+	Since        string `json:"since"`
+	Until        string `json:"until"`
+	Timestamps   bool   `json:"timestamps"`
+	Follow       bool   `json:"follow"`
+	Tail         string `json:"tail"`
+	Details      bool   `json:"details"`
 }
 
 //FunctionTest function test
@@ -81,4 +82,9 @@ type AuthDTO struct {
 //JWTToken ######################################
 type JWTToken struct {
 	Token string `json:"token"`
+}
+
+//NewVersionMessage new version message
+type NewVersionMessage struct {
+	Version string `json:"version"`
 }

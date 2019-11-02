@@ -20,6 +20,7 @@ package httphandler
 
 import (
 	"net/http"
+	"quebic-faas/auth"
 	"quebic-faas/common"
 	"quebic-faas/quebic-faas-mgr/config"
 	"quebic-faas/types"
@@ -31,8 +32,9 @@ import (
 func (httphandler *Httphandler) MgrComponentHandler(router *mux.Router) {
 
 	appConfig := httphandler.config
+	authConfig := appConfig.Auth
 
-	router.HandleFunc("/mgr-components", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/mgr-components", validateMiddleware(func(w http.ResponseWriter, r *http.Request) {
 
 		//components
 		var components []types.ManagerComponent
@@ -52,7 +54,7 @@ func (httphandler *Httphandler) MgrComponentHandler(router *mux.Router) {
 			writeResponse(w, components, http.StatusOK)
 		}
 
-	}).Methods("GET")
+	}, auth.RoleAny, authConfig)).Methods("GET")
 
 }
 

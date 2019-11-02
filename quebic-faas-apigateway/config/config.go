@@ -21,10 +21,13 @@ import (
 
 //AppConfig appConfig
 type AppConfig struct {
-	AppID          string                `json:"appID"`
-	Auth           AuthConfig            `json:"auth"`
-	ServerConfig   config.ServerConfig   `json:"serverConfig"`
-	EventBusConfig config.EventBusConfig `json:"eventBusConfig"`
+	AppID                    string                `json:"appID"`
+	DeploymentID             string                `json:"deploymentID"`
+	Version                  string                `json:"version"`
+	CurrentDeploymentVersion string                `json:"currentDeploymentVersion"`
+	Auth                     AuthConfig            `json:"auth"`
+	ServerConfig             config.ServerConfig   `json:"serverConfig"`
+	EventBusConfig           config.EventBusConfig `json:"eventBusConfig"`
 }
 
 //SetDefault set default

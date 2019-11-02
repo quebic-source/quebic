@@ -63,6 +63,9 @@ const FunctionLifeMinAgeMinutes = 2
 //FunctionLifeMinAgeSeconds minimum seconds
 const FunctionLifeMinAgeSeconds = 60 * FunctionLifeMinAgeMinutes
 
+//FunctionInitialVersion init version
+const FunctionInitialVersion = "0.1.0"
+
 //RuntimeValidate runtime validate
 func RuntimeValidate(runtime Runtime) bool {
 

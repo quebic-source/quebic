@@ -21,6 +21,7 @@ package httphandler
 import (
 	"encoding/json"
 	"net/http"
+	"quebic-faas/auth"
 	"quebic-faas/common"
 	"quebic-faas/quebic-faas-mgr/dao"
 	"quebic-faas/types"
@@ -31,9 +32,10 @@ import (
 //ApigatewayDataServe handler
 func (httphandler *Httphandler) ApigatewayDataServe(router *mux.Router) {
 
+	authConfig := httphandler.config.Auth
 	db := httphandler.db
 
-	router.HandleFunc("/apigateway-data-serve", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/apigateway-data-serve", validateMiddleware(func(w http.ResponseWriter, r *http.Request) {
 
 		apigatewayData := types.ApigatewayData{}
 
@@ -91,6 +93,6 @@ func (httphandler *Httphandler) ApigatewayDataServe(router *mux.Router) {
 
 		writeResponse(w, apigatewayData, http.StatusOK)
 
-	}).Methods("GET")
+	}, auth.RoleAny, authConfig)).Methods("GET")
 
 }

@@ -76,6 +76,8 @@ func (app *App) setupConfiguration() {
 func (app *App) setupEnvVariables() {
 
 	app.config.Auth.Accesstoken = os.Getenv(common.EnvKeyAPIGateWayAccessKey)
+	app.config.DeploymentID = os.Getenv(common.EnvKey_deploymentID)
+	app.config.Version = os.Getenv(common.EnvKey_version)
 
 	rabbitmq_host := os.Getenv(common.EnvKey_rabbitmq_host)
 	rabbitmq_port := os.Getenv(common.EnvKey_rabbitmq_port)
@@ -84,22 +86,18 @@ func (app *App) setupEnvVariables() {
 
 	if rabbitmq_host != "" {
 		app.config.EventBusConfig.AMQPHost = rabbitmq_host
-		log.Printf("## load from env AMQPHost : %s ##", app.config.EventBusConfig.AMQPHost)
 	}
 
 	if rabbitmq_port != "" {
 		app.config.EventBusConfig.AMQPPort = common.StrToInt(rabbitmq_port)
-		log.Printf("## load from env AMQPPort : %d ##", app.config.EventBusConfig.AMQPPort)
 	}
 
 	if rabbitmq_management_username != "" {
 		app.config.EventBusConfig.ManagementUserName = rabbitmq_management_username
-		log.Printf("## load from env ManagementUserName : %s ##", app.config.EventBusConfig.ManagementUserName)
 	}
 
 	if rabbitmq_management_password != "" {
 		app.config.EventBusConfig.ManagementPassword = rabbitmq_management_password
-		log.Printf("## load from env ManagementPassword : %s ##", app.config.EventBusConfig.ManagementPassword)
 	}
 
 }
@@ -156,6 +154,7 @@ func (app *App) loadAPIGatewayData() {
 			apigatewayData := &types.ApigatewayData{}
 			message.ParsePayloadAsObject(apigatewayData)
 			app.resources = apigatewayData.Resources
+			app.config.CurrentDeploymentVersion = apigatewayData.CurrentDeploymentVersion
 
 			log.Printf("apigateway-data fetched")
 

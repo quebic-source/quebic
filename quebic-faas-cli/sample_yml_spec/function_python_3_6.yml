@@ -1,0 +1,33 @@
+function:
+  name: py-test-3-6
+  version: 0.1.0
+  source: /home/tharanga/my/quebic-faas/quebic-faas-container-python/test/sample_handlers/handler.py
+  handler: index.handler
+  runtime: python_3.6
+  replicas: 1
+  life:
+    awake: request
+    idleState:
+      timeout: 60
+      timeunit: seconds
+  events:
+    - test.Caller
+  env:
+    - name: e1
+      value: v1
+    - name: e2
+      value: v2_x
+
+route:
+  requestMethod: GET
+  url: /py-test-3-6
+  requestMapping:
+    - eventAttribute: email
+      requestAttribute: q
+    - eventAttribute: name
+      requestAttribute: qName
+  headerMapping:
+    - eventAttribute: auth
+      headerAttribute: x-token
+  headersToPass:
+    - Authorization

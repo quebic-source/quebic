@@ -36,6 +36,8 @@ var apigatewayServerPort int
 var mgrDashboardServerHost string
 var mgrDashboardServerPort int
 
+var inCluster bool
+
 var deployment string
 
 var configSave bool
@@ -64,6 +66,8 @@ func setupFlags() {
 
 	rootCmd.PersistentFlags().StringVarP(&mgrDashboardServerHost, "dashboard-server-host", "", "", "dashboard-server-host")
 	rootCmd.PersistentFlags().IntVarP(&mgrDashboardServerPort, "dashboard-server-port", "", 0, "dashboard-server-port")
+
+	rootCmd.PersistentFlags().BoolVarP(&inCluster, "in-cluster", "", true, "in-cluster")
 
 	rootCmd.PersistentFlags().StringVarP(&deployment, "deployment", "", "", "deployment")
 
@@ -135,6 +139,10 @@ func setFlagsToConfig() {
 
 	if mgrDashboardServerPort != 0 {
 		appConfig.MgrDashboardConfig.ServerConfig.Port = mgrDashboardServerPort
+	}
+
+	if !inCluster {
+		appConfig.InCluster = inCluster
 	}
 
 	if deployment != "" {

@@ -17,78 +17,55 @@ package dao
 import (
 	"encoding/json"
 	"fmt"
+	"quebic-faas/common"
 	"quebic-faas/types"
-	"time"
 
 	bolt "github.com/coreos/bbolt"
 )
 
-//AddManagerComponentDockerImageID set DockerImageID
-func AddManagerComponentDockerImageID(db *bolt.DB, component *types.ManagerComponent, dockerImageID string) error {
+//ManagerComponentSetupAPIGateway setupAPIGateway
+func ManagerComponentSetupAPIGateway(db *bolt.DB) (*types.ManagerComponent, error) {
 
-	err := getByID(db, component, func(savedObj []byte) error {
+	apiGateway := &types.ManagerComponent{ID: common.ComponentAPIGateway}
+	var version int
+
+	getByID(db, apiGateway, func(savedObj []byte) error {
 
 		if savedObj == nil {
-			return fmt.Errorf("unable to found component")
+			version = common.ComponentAPIGatewayVersionDefaultStart
+			return nil
 		}
 
-		json.Unmarshal(savedObj, component)
-
+		json.Unmarshal(savedObj, apiGateway)
+		version = common.StrToInt(apiGateway.Version) + 1
 		return nil
 	})
 
+	apiGateway.Version = common.IntToStr(version)
+	err := Save(db, apiGateway)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	component.DockerImageID = dockerImageID
-	return Save(db, component)
+	return apiGateway, nil
 
 }
 
-//AddManagerComponentDockerContainerID set ContainerID
-func AddManagerComponentDockerContainerID(db *bolt.DB, component *types.ManagerComponent, containerID string) error {
+//ManagerComponentGetAPIGateway getAPIGateway
+func ManagerComponentGetAPIGateway(db *bolt.DB) (*types.ManagerComponent, error) {
 
-	err := getByID(db, component, func(savedObj []byte) error {
+	apiGateway := &types.ManagerComponent{ID: common.ComponentAPIGateway}
+
+	getByID(db, apiGateway, func(savedObj []byte) error {
 
 		if savedObj == nil {
-			return fmt.Errorf("unable to found component")
+			return fmt.Errorf("%v not found", apiGateway.GetID())
 		}
 
-		json.Unmarshal(savedObj, component)
-
+		json.Unmarshal(savedObj, apiGateway)
 		return nil
 	})
 
-	if err != nil {
-		return err
-	}
+	return apiGateway, nil
 
-	component.DockerContainerID = containerID
-	return Save(db, component)
-
-}
-
-//AddManagerComponentLog add log
-func AddManagerComponentLog(db *bolt.DB, component *types.ManagerComponent, log types.EntityLog) error {
-
-	log.Time = time.Now().String()
-
-	err := getByID(db, component, func(savedObj []byte) error {
-
-		if savedObj == nil {
-			return fmt.Errorf("unable to found component")
-		}
-
-		json.Unmarshal(savedObj, component)
-
-		return nil
-	})
-
-	if err != nil {
-		return err
-	}
-
-	component.Log = log
-	return Save(db, component)
 }

@@ -17,8 +17,8 @@ package httphandler
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
+	"quebic-faas/auth"
 	"quebic-faas/common"
 	quebic_messenger "quebic-faas/messenger"
 	"quebic-faas/quebic-faas-mgr/config"
@@ -38,19 +38,20 @@ import (
 	bolt "github.com/coreos/bbolt"
 	"github.com/gorilla/mux"
 	uuid "github.com/satori/go.uuid"
-)
 
-const initialVersion = "0.1.0"
+	docker_types "github.com/docker/docker/api/types"
+)
 
 //FunctionHandler handler
 func (httphandler *Httphandler) FunctionHandler(router *mux.Router) {
 
 	db := httphandler.db
 	appConfig := httphandler.config
+	authConfig := appConfig.Auth
 	deployment := httphandler.deployment
 	messenger := httphandler.messenger
 
-	router.HandleFunc("/functions", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/functions", validateMiddleware(func(w http.ResponseWriter, r *http.Request) {
 
 		qID := r.FormValue("id")
 		if qID == "" {
@@ -62,13 +63,13 @@ func (httphandler *Httphandler) FunctionHandler(router *mux.Router) {
 		function.Name = qID
 		getByID(w, r, db, function)
 
-	}).Methods("GET")
+	}, auth.RoleAny, authConfig)).Methods("GET")
 
-	router.HandleFunc("/functions/{name}", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/functions/{name}", validateMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		getByID(w, r, db, processRequestParmForID(r, "name", &types.Function{}))
-	}).Methods("GET")
+	}, auth.RoleAny, authConfig)).Methods("GET")
 
-	router.HandleFunc("/functions", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/functions", validateMiddleware(func(w http.ResponseWriter, r *http.Request) {
 
 		functionDTO := &types.FunctionDTO{}
 		err := processFunctionSaveReqest(r, functionDTO)
@@ -79,9 +80,9 @@ func (httphandler *Httphandler) FunctionHandler(router *mux.Router) {
 
 		saveFunctionDTO(w, r, db, functionDTO, appConfig, deployment, messenger, true)
 
-	}).Methods("POST")
+	}, auth.RoleAny, authConfig)).Methods("POST")
 
-	router.HandleFunc("/functions", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/functions", validateMiddleware(func(w http.ResponseWriter, r *http.Request) {
 
 		functionDTO := &types.FunctionDTO{}
 		err := processFunctionSaveReqest(r, functionDTO)
@@ -92,9 +93,9 @@ func (httphandler *Httphandler) FunctionHandler(router *mux.Router) {
 
 		saveFunctionDTO(w, r, db, functionDTO, appConfig, deployment, messenger, false)
 
-	}).Methods("PUT")
+	}, auth.RoleAny, authConfig)).Methods("PUT")
 
-	router.HandleFunc("/functions/deploy", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/functions/deploy", validateMiddleware(func(w http.ResponseWriter, r *http.Request) {
 
 		function := &types.Function{}
 		err := processRequest(r, function)
@@ -140,9 +141,9 @@ func (httphandler *Httphandler) FunctionHandler(router *mux.Router) {
 
 		writeResponse(w, function, 200)
 
-	}).Methods("POST")
+	}, auth.RoleAny, authConfig)).Methods("POST")
 
-	router.HandleFunc("/functions/scale", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/functions/scale", validateMiddleware(func(w http.ResponseWriter, r *http.Request) {
 
 		function := &types.Function{}
 		err := processRequest(r, function)
@@ -188,9 +189,9 @@ func (httphandler *Httphandler) FunctionHandler(router *mux.Router) {
 
 		writeResponse(w, function, 200)
 
-	}).Methods("POST")
+	}, auth.RoleAny, authConfig)).Methods("POST")
 
-	router.HandleFunc("/functions/test", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/functions/test", validateMiddleware(func(w http.ResponseWriter, r *http.Request) {
 
 		functionTest := &types.FunctionTest{}
 		err := processRequest(r, functionTest)
@@ -239,9 +240,9 @@ func (httphandler *Httphandler) FunctionHandler(router *mux.Router) {
 			return
 		}
 
-	}).Methods("POST")
+	}, auth.RoleAny, authConfig)).Methods("POST")
 
-	router.HandleFunc("/functions", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/functions", validateMiddleware(func(w http.ResponseWriter, r *http.Request) {
 
 		function := &types.Function{}
 		err := processRequest(r, function)
@@ -274,11 +275,11 @@ func (httphandler *Httphandler) FunctionHandler(router *mux.Router) {
 
 		writeResponse(w, function, 200)
 
-	}).Methods("DELETE")
+	}, auth.RoleAny, authConfig)).Methods("DELETE")
 
-	router.HandleFunc("/function_containers/logs", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("/function_containers/logs", validateMiddleware(func(w http.ResponseWriter, r *http.Request) {
 
-		if deployment.DeploymentType() != config.Deployment_Docker {
+		/*if deployment.DeploymentType() != config.Deployment_Docker {
 			makeErrorResponse(w, http.StatusBadRequest, fmt.Errorf("funtion-logs access only allow for docker deployment mode"))
 			return
 		}
@@ -315,9 +316,11 @@ func (httphandler *Httphandler) FunctionHandler(router *mux.Router) {
 			return
 		}
 
-		writeResponse(w, logs, 200)
+		writeResponse(w, logs, 200)*/
 
-	}).Methods("POST")
+		writeResponse(w, "not-implemented", 200)
+
+	}, auth.RoleAny, authConfig)).Methods("POST")
 
 }
 
@@ -458,7 +461,7 @@ func saveFunctionDTO(
 		return
 	}
 
-	err = saveRoute(db, route, appConfig, deployment, isCreate)
+	err = saveRoute(db, route, appConfig, deployment, messenger, isCreate)
 	if err != nil {
 		makeErrorResponse(w, http.StatusInternalServerError, err)
 		return
@@ -507,7 +510,7 @@ func saveFunction(
 
 }
 
-func saveRoute(db *bolt.DB, route *types.Resource, appConfig config.AppConfig, deployment dep.Deployment, isCreate bool) error {
+func saveRoute(db *bolt.DB, route *types.Resource, appConfig config.AppConfig, deployment dep.Deployment, messenger quebic_messenger.Messenger, isCreate bool) error {
 
 	err := preProcessResource(route)
 	if err != nil {
@@ -533,7 +536,7 @@ func saveRoute(db *bolt.DB, route *types.Resource, appConfig config.AppConfig, d
 	}
 
 	//re-start apigateway
-	restartAPIGateway(appConfig, deployment)
+	restartAPIGateway(appConfig, db, deployment, messenger)
 
 	return nil
 
@@ -712,7 +715,7 @@ func checkFunctionISAlreadyExists(db *bolt.DB, function *types.Function) bool {
 
 			//Version setup
 			if newVersion == "" || newVersion == "latest" {
-				function.Version = initialVersion
+				function.Version = common.FunctionInitialVersion
 			}
 			function.Versions = append(function.Versions, function.Version)
 			//Version setup
@@ -764,10 +767,16 @@ func postProcessFunction(
 	entityLog := types.EntityLog{State: common.LogStateSaved}
 	dao.AddFunctionLog(db, function, entityLog, common.KubeStatusFalse)
 
-	authConfig, err := dockerConfig.GetDockerAuthConfig()
-	if err != nil {
-		log.Print(err)
-		return err
+	//TODO
+	/*
+		authConfig, err := dockerConfig.GetDockerAuthConfig()
+		if err != nil {
+			log.Print(err)
+			return err
+		}*/
+
+	authConfig := docker_types.AuthConfig{
+		Username: "",
 	}
 
 	functionRunTime := prepareFunctionRunTime(common.Runtime(function.Runtime))

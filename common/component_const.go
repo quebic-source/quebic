@@ -25,6 +25,9 @@ const ComponentEventBus = componentPrefix + "eventbus"
 //ComponentAPIGateway apigateway
 const ComponentAPIGateway = componentPrefix + "apigateway"
 
+//ComponentMgrAPI mgr-api
+const ComponentMgrAPI = componentPrefix + "mgr"
+
 //ComponentMgrDashboard mgr-dashboard
 const ComponentMgrDashboard = componentPrefix + "mgr-dashboard"
 
@@ -33,3 +36,9 @@ const ComponentEventBox = componentPrefix + "eventbox"
 
 //ComponentEventBoxDB eventbox-db
 const ComponentEventBoxDB = componentPrefix + "eventbox-db"
+
+//ComponentAPIGatewayDefaultReplicas apigateway default replicas
+const ComponentAPIGatewayDefaultReplicas = 1
+
+//ComponentAPIGatewayVersionDefaultStart default start value of a apigateway
+const ComponentAPIGatewayVersionDefaultStart = 1

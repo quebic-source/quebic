@@ -124,7 +124,7 @@ func eventBoxServerSetup(appConfig config.AppConfig, deployment dep.Deployment, 
 	envkeys[common.EnvKey_rabbitmq_management_username] = eventBusConfig.ManagementUserName
 	envkeys[common.EnvKey_rabbitmq_management_password] = eventBusConfig.ManagementPassword
 	envkeys[common.EnvKey_eventConst_eventPrefixUserDefined] = common.EventPrefixUserDefined
-	envkeys[common.EnvKey_eventConst_eventLogListener] = common.EventRequestTracker
+	envkeys[common.EnvKey_eventConst_eventLog] = common.EventRequestTracker
 
 	//db
 	envkeys[common.EnvKey_mongo_host] = eventboxDB.Host

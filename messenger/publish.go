@@ -135,7 +135,9 @@ func (messenger *Messenger) publish(
 			statuscode := be.GetStatuscode()
 			if err == "" {
 
-				successHandler(be, statuscode, Context{RequestID: requestID})
+				if successHandler != nil {
+					successHandler(be, statuscode, Context{RequestID: requestID})
+				}
 				waitForResponse <- true
 
 			} else {

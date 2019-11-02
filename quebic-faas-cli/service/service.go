@@ -23,6 +23,11 @@ type ResponseMessage struct {
 
 //getApiURL path=> /users/....
 func (mgrService *MgrService) prepareURL(path string) string {
+
+	if mgrService.MgrServerConfig.Port == 0 {
+		return "http://" + mgrService.MgrServerConfig.Host + path
+	}
+
 	return "http://" + mgrService.MgrServerConfig.Host + ":" + common.IntToStr(mgrService.MgrServerConfig.Port) + path
 }
 
