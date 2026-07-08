@@ -988,3 +988,108 @@ modelling overhead with no functional payoff for these access patterns.
 - Documentation primarily lives in the root `README.md` (per-runtime programming
   models, spec formats, and CLI reference) plus the diagrams/deck in `docs/`.
 ```
+
+---
+
+## 18. Future Improvements
+
+### 18.1 Awake via KEDA (Kubernetes Event Driven Autoscaling), triggered by RabbitMQ
+
+**Today (§9.3–§9.4).** For `awake: request` functions Quebic hand-rolls its own
+scale-from-zero: the manager subscribes a lightweight listener to the function's
+events, deploys the container on the first matching event, proxies that event
+through a `function-awake.<name>` channel, and later the container idles out and
+publishes a `shutdown-request` that the manager's **GC** acts on to delete the
+deployment. This works but couples cold-start and reaping to bespoke control-plane
+code (the listener, the awake-proxy channel, and the GC completion tallying).
+
+**Proposed.** Delegate scale-from-zero (and scale-to-zero) to **KEDA** using its
+**RabbitMQ scaler**. KEDA watches the function's queue depth on the
+`quebic-faas-eventbus` broker and drives the Kubernetes Deployment's replica count
+directly — `0 → N` when messages are waiting, back to `0` after they drain. Quebic
+keeps owning build/deploy and the event model; KEDA owns the autoscaling loop.
+
+**What this replaces / simplifies:**
+- The manager's per-function **awake listener** and the `function-awake.<name>`
+  proxy channel — no more intercepting the first event to boot the container.
+- The **`shutdown-request` + GC completion-tally** path for idle reaping — KEDA
+  scales the deployment to zero on an idle cooldown instead.
+- Idle policy (`idleState.timeout`) maps onto KEDA's `cooldownPeriod`;
+  `awake: request` maps onto `minReplicaCount: 0`.
+
+**What Quebic would generate at deploy time** (in `kube_deployment`): alongside the
+Deployment + Service, emit a `ScaledObject` (and, if per-message concurrency is
+desired, a `ScaledJob`) pointing at the function's queue.
+
+```yaml
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: quebic-faas-function-<name>
+spec:
+  scaleTargetRef:
+    name: quebic-faas-function-<name>-<version>   # the Deployment
+  minReplicaCount: 0            # ← awake: request  (scale-from-zero)
+  maxReplicaCount: <replicas>
+  cooldownPeriod: <idleState.timeout in seconds>   # ← idle reaping
+  triggers:
+    - type: rabbitmq
+      metadata:
+        protocol: amqp
+        queueName: <appID>.<eventID>               # §12.1: getQueueName
+        mode: QueueLength
+        value: "1"
+      authenticationRef:
+        name: quebic-faas-rabbitmq-auth            # host/creds from EventBusConfig
+```
+
+**Trade-offs to weigh:** adds KEDA + its metrics adapter as a cluster dependency;
+`autoDelete: true` queues (§12.2) must become durable/non-autoDelete so a queue
+exists for KEDA to poll while replicas are at zero; and the current auto-ack
+"at-most-once" semantics may want revisiting so queue depth accurately reflects
+outstanding work.
+
+#### ASCII diagram — KEDA-driven awake on RabbitMQ
+
+```
+                        external client / another function
+                                     │  HTTP  (or function→function publish)
+                                     ▼
+                            ┌──────────────────┐
+                            │   API Gateway     │  map request → event
+                            └────────┬─────────┘
+                                     │ publish(eventID)         [routingKey = eventID]
+                                     ▼
+        ┌──────────────────────────────────────────────────────────────┐
+        │       RabbitMQ topic exchange  "quebic-faas-eventbus"          │
+        └───────────────────────────────┬──────────────────────────────┘
+                                         │ bound (durable, NOT autoDelete)
+                                         ▼
+                            ┌──────────────────────────┐
+                            │   QUEUE  <appID>.<eventID> │   ← messages pile up
+                            │   depth = N (>0)           │      while replicas = 0
+                            └────────────┬──────────────┘
+                                         │
+             poll queue depth            │ (QueueLength via AMQP / mgmt API)
+        ┌────────────────────────────────┤
+        │                                ▼
+   ┌─────────┐   metrics   ┌──────────────────────────┐
+   │  KEDA    │◄───────────┤  RabbitMQ scaler / trigger │
+   │ operator │            └──────────────────────────┘
+   │          │
+   │  drives  │  patch replicas:  0 → N   (depth>0)      ┌───────────────────────┐
+   │  replica │───────────────────────────────────────► │ Kubernetes Deployment  │
+   │  count   │  patch replicas:  N → 0   (idle cooldown)│ quebic-faas-function-* │
+   └─────────┘                                           └───────────┬───────────┘
+        ▲                                                            │ pods start
+        │ cooldownPeriod  (= idleState.timeout)                      ▼
+        │ elapses with depth == 0                          ┌───────────────────┐
+        └──────────────────────────────────────────────── │ Function container │
+                                                           │ subscribe(eventID) │
+                                                           │  handler → reply   │
+                                                           └───────────────────┘
+
+   ── SCALE-FROM-ZERO ──   queue depth > 0  →  KEDA scales Deployment 0 → N
+   ── SCALE-TO-ZERO   ──   depth == 0 for cooldownPeriod  →  KEDA scales N → 0
+   (replaces: manager awake-listener, function-awake proxy, shutdown-request + GC)
+```
